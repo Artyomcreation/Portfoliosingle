@@ -1,0 +1,1859 @@
+<title>Artjoms Suslovs</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   TOKENS — Dennis Snellenberg style reference
+   Dark-only by design. The canvas owns the interface.
+   ============================================================ */
+:root{
+  /* colour — light, and only light. Steps of one warm-neutral grey, never new hues. */
+  --canvas:#eff0f1;      /* the ground. Owns ~95% of the interface.        */
+  --ink:#1c1d20;         /* all primary text — 14.7:1 on the canvas        */
+  --fog:#62666a;         /* secondary copy, captions, metadata — 5.1:1     */
+  --faint:#83878b;       /* placeholder markers only — 3.2:1, deliberately unfinished */
+  --iris:#455ce9;        /* the accent — 4.6:1 as text, 5.2:1 under white  */
+  --iris-deep:#334bd3;
+  --on-accent:#ffffff;   /* the only true white left: text sitting on iris */
+
+  /* derived surfaces — steps DOWN from the canvas now, not up */
+  --surface:#e4e6e8;     /* card, quote, fork ground   */
+  --surface-hi:#dbdde0;  /* card and pill hover        */
+  --hair:rgba(28,29,32,.16);
+  --hair-soft:rgba(28,29,32,.10);
+
+  /* type */
+  --font:'Geist',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --w:450;              /* the single weight. never change it. */
+  --track:.05em;        /* uniform across every size — the signature */
+
+  --t-caption:10px;
+  --t-meta:12px;
+  --t-body:15px;
+  --t-body-lg:17px;
+  --t-h-sm:33px;
+  --t-h:60px;
+  --t-h-lg:88px;
+
+  /* hero — each clamp hits the artboard value exactly at 1920 */
+  --t-hero-meta:clamp(14px,.885vw,17px);
+  --t-hero-meta-sm:clamp(13px,.78vw,15px);
+  --t-hero-work:clamp(19px,1.354vw,26px);
+  --t-hero-title:clamp(30px,3.23vw,62px);
+  --panel-pad:clamp(20px,4.2%,40px);   /* the drawer's own gutter, per the reference */
+  --bar-h:68px;
+  --hero-gap:clamp(12px,1.25vw,24px);   /* grid gutter, and the caption's hang */
+
+  /* spacing */
+  --s4:4px;   --s8:8px;   --s10:10px; --s12:12px; --s17:17px;
+  --s22:22px; --s43:43px; --s54:54px; --s63:63px;
+  --s115:115px; --s189:189px;
+
+  /* shape */
+  --r-card:10px;
+  --r-pill:36.72px;
+  --ring:rgba(28,29,32,.18) 0 0 0 1px inset;
+
+  /* layout */
+  --pad:clamp(20px,3.125vw,60px);   /* 60px at 1920, per the artboard */
+  --gap:12px;
+  --section:clamp(88px,12vw,160px);
+
+  --ease:cubic-bezier(.22,.61,.36,1);
+  /* Was videinfra's own curve, a pure ease-out that starts at full speed.
+     Replaced with a symmetric ease-in-out (easeInOutQuart): the panel now
+     gathers speed, crosses, and settles, which suits a surface this large
+     better than launching it. */
+  --ease-modal:cubic-bezier(.76,0,.24,1);
+  /* Pace of the drawer. Both were taken down 30% from 1.56s / 0.52s;
+     total open is now 1.46s against 2.08s. The drawer covers half a viewport,
+     so at 1.1s it runs at ~655px/s. */
+  --t-drawer:1.1s;
+  --t-scrim:0.36s;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;}
+html{
+  -webkit-text-size-adjust:100%;color-scheme:light;
+  /* Reserve the scrollbar gutter permanently. Without this, locking the body
+     when the drawer opens removes the 15px scrollbar, the layout gets 15px
+     wider, and everything anchored right - the drawer included - slides left
+     by half that. It looked like the drawer settling into place; it was the
+     whole page moving under it. */
+  scrollbar-gutter:stable;
+}
+body{
+  margin:0;
+  background:var(--canvas);
+  color:var(--ink);
+  font-family:var(--font);
+  font-weight:var(--w);
+  font-size:var(--t-body);
+  line-height:1.66;
+  letter-spacing:var(--track);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body.is-locked{overflow:hidden;}
+h1,h2,h3,h4,p,figure,blockquote,dl,dd{margin:0;}
+ul{margin:0;padding:0;list-style:none;}
+a{color:inherit;text-decoration:none;}
+button{font:inherit;font-weight:var(--w);letter-spacing:var(--track);color:inherit;
+  background:none;border:0;padding:0;cursor:pointer;}
+img{max-width:100%;display:block;}
+strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emphasis is tone, not weight */
+:focus-visible{outline:2px solid var(--iris);outline-offset:3px;}
+
+.pad{padding-inline:var(--pad);}
+.col{max-width:62ch;}
+.hair{border-top:1px solid var(--hair-soft);}
+
+/* type roles */
+.caption{font-size:var(--t-caption);line-height:1.45;color:var(--fog);text-transform:uppercase;}
+.meta{font-size:var(--t-meta);line-height:1.4;color:var(--fog);}
+.body-lg{font-size:var(--t-body-lg);line-height:1.5;color:var(--fog);}
+.muted{color:var(--fog);}
+
+.h-sm{font-size:var(--t-h-sm);line-height:1.2;}
+.h{font-size:clamp(34px,5.4vw,60px);line-height:1.07;}
+.h-lg{font-size:clamp(44px,7.6vw,88px);line-height:1.06;}
+
+/* placeholder marker — copy Artjoms still has to write */
+.tbd{color:var(--faint);border-bottom:1px dashed var(--faint);cursor:help;}
+
+/* ============================================================
+   PILL — the one interactive shape in the system
+   ============================================================ */
+.pill{
+  display:inline-flex;align-items:center;gap:var(--s10);
+  padding:var(--s12) var(--s22);
+  border-radius:var(--r-pill);
+  font-size:14px;line-height:1.2;
+  background:transparent;box-shadow:var(--ring);
+  transition:background .22s var(--ease),color .22s var(--ease),box-shadow .22s var(--ease);
+  white-space:nowrap;
+}
+.pill:hover{background:var(--surface-hi);}          /* state = background swap. no lift, no shadow. */
+.pill-iris{background:var(--iris);color:var(--on-accent);box-shadow:none;}
+.pill-iris:hover{background:var(--iris-deep);}
+.pill-solid{background:var(--ink);color:var(--canvas);box-shadow:none;}
+.pill-solid:hover{background:var(--fog);color:var(--canvas);}
+.pill-sm{padding:var(--s8) var(--s17);font-size:var(--t-meta);}
+
+/* ============================================================
+   HERO - laid out from the 1920x1080 artboard
+
+   Two anchors carry the whole composition: the left edge, and a
+   second column at 54.8% of the content width (x=1046 on the
+   artboard). Columns are declared as artboard fractions so the
+   proportions hold at any width instead of only at 1920.
+   ============================================================ */
+.hero{
+  position:relative;
+  isolation:isolate;              /* keeps the difference blend inside the hero */
+  background:var(--canvas);       /* and the group must own the ground it blends against,
+                                     otherwise difference resolves over transparent black */
+  min-height:100svh;
+  display:flex;flex-direction:column;
+  padding:var(--pad);
+  overflow:hidden;
+  letter-spacing:0;               /* the artboard is set solid, not tracked out */
+}
+
+.hero-grid{
+  flex:1;
+  display:grid;
+  grid-template-columns:
+    minmax(0,348fr)               /* portrait     60   -> 408  */
+    minmax(0,638fr)               /* open        408   -> 1046 */
+    minmax(0,451fr)               /* preview    1046   -> 1497 */
+    minmax(0,363fr);              /* work list  1497   -> 1860 */
+  grid-template-rows:auto 1fr auto;
+  column-gap:var(--hero-gap);
+  row-gap:clamp(24px,3vw,48px);
+}
+
+/* ---- the difference trick ----------------------------------
+   The wipe opens a near-black window under the text, and ink on
+   near-black is invisible. Painting the type white and blending
+   it with difference makes it invert itself: over the light
+   canvas #eff0f1 white resolves to #100f0e, over the revealed
+   #0f1015 it resolves to near-white. No JS, no measuring.
+   The greys need a grey source for the same reason:
+   |239-141| = 98, which lands on the fog we already use. */
+/* .inv belongs on the element that paints the glyphs, never on a wrapper:
+   mix-blend-mode makes the element a stacking context, which drops the whole
+   group below the canvas and isolates its children's blending. That is exactly
+   how the nav stopped inverting - the class was on <nav> instead of the links. */
+.inv,.inv-fog{mix-blend-mode:difference;}
+.inv{color:#ffffff;}
+.inv-fog{color:#8d8e8f;}
+
+/* everything that must clear the canvas, lifted leaf by leaf rather than
+   by wrapping — a wrapper here would kill the blend above */
+.hero-place,.hero-clock,.hero-title,.hero-lede,
+.hero-nav a,.hero-work a,
+.hero-portrait figcaption span,
+.hero-preview{position:relative;z-index:3;}
+
+/* ---- top row ---- */
+.hero-place{grid-column:2;grid-row:1;font-size:var(--t-hero-meta);}
+.hero-clock{grid-column:3;grid-row:1;font-size:var(--t-hero-meta);font-variant-numeric:tabular-nums;}
+.hero-nav{grid-column:4;grid-row:1;justify-self:end;
+  display:flex;flex-wrap:wrap;gap:clamp(10px,.94vw,18px);font-size:var(--t-hero-meta);}
+.hero-nav a{transition:opacity .2s var(--ease);}
+.hero-nav a:hover{opacity:.55;}
+
+/* ---- portrait ---- */
+.hero-portrait{grid-column:1;grid-row:1 / 3;align-self:start;margin:0;}
+.hero-portrait .plate{
+  aspect-ratio:344 / 430;        /* the asset's own ratio - no crop */
+  background:var(--surface) center/cover no-repeat;
+  background-image:url('assets/Profile_picture_Grey.png');
+  position:relative;z-index:1;   /* BELOW the canvas: this is the surface the wipe
+                                    opens. The colour version is composited into the
+                                    reveal texture, so the cursor uncovers it. */
+}
+.hero-portrait figcaption{
+  margin-top:8px;                 /* tight to the plate, flat rather than scaled:
+                                     at this size the vw ramp is imperceptible */
+  display:flex;flex-direction:column;gap:2px;
+  text-align:left;                /* flush with the portrait's left edge */
+}
+.hero-portrait .n{font-size:var(--t-hero-meta);}
+.hero-portrait .r{font-size:var(--t-hero-meta-sm);}
+
+/* ---- preview ---- */
+.hero-preview{
+  grid-column:3;grid-row:2;align-self:center;margin-top:clamp(0px,3.5svh,38px);
+  position:relative;aspect-ratio:451 / 300;   /* the artboard's slot. Note this crops
+                                                a 808x632 asset by 15% of its height */
+  background:var(--surface);overflow:hidden;
+}
+/* The frame holds its place and the photograph scales inside it. The plate's
+   right edge clears the work list by a couple of pixels, so growing the frame
+   itself would drive it straight under the project names. .hero-preview already
+   clips, so the zoom stays in its box. */
+.hero-shot{position:absolute;inset:0;background:center/cover no-repeat;
+  opacity:0;transform:scale(1);
+  transition:opacity .42s var(--ease),transform .55s var(--ease);}
+.hero-shot.is-on{opacity:1;}
+/* The zoom belongs to the project names only. The plate itself is not a
+   control - it reports what is hovered, it does not respond to being pointed
+   at - so hovering it does nothing. .is-zoom is set by the name handler. */
+.hero-preview.is-zoom .hero-shot{transform:scale(1.2);}
+
+/* ---- work list ---- */
+.hero-work{
+  grid-column:4;grid-row:2;align-self:center;margin-top:clamp(0px,1.5svh,16px);
+  display:flex;flex-direction:column;align-items:flex-end;text-align:right;
+}
+.hero-work a{
+  display:block;
+  font-size:var(--t-hero-work);font-weight:700;line-height:2;letter-spacing:-.01em;
+  transition:opacity .2s var(--ease),transform .2s var(--ease);
+}
+/* The resting accent keeps the artboard's blue. It sits on the light canvas,
+   where iris reads at 4.6:1, and it is never under the cursor by definition. */
+.hero-work .is-on{color:var(--iris);mix-blend-mode:normal;}
+
+/* The hovered one is a different problem: the cursor is on it, so the wipe is
+   on it, so it has to survive a dark backdrop. difference only guarantees
+   contrast for a WHITE source — iris over the brighter parts of the photograph
+   measures 1.45:1 — so hover gives up the hue and takes the inversion instead.
+   That leaves hover with no colour to signal itself, so the feedback is carried
+   by a small nudge instead. Motion survives inversion, puts no extra mark in the
+   composition, and leaves the list looking exactly as drawn at rest. */
+.hero-work a:hover{
+  color:#ffffff;mix-blend-mode:difference;opacity:1;
+  transform:translateX(-.38em);
+}
+
+/* ---- bottom block ---- */
+.hero-title{
+  grid-column:1 / 3;grid-row:3;
+  font-size:var(--t-hero-title);font-weight:700;line-height:1.08;letter-spacing:-.02em;
+  max-width:20ch;                 /* holds the artboard's three-line break */
+}
+.hero-lede{
+  grid-column:3 / 5;grid-row:3;align-self:end;
+  font-size:var(--t-hero-meta);line-height:1.53;
+}
+
+/* ---- narrow: one column, same order ---- */
+@media (max-width:899px){
+  .hero-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:none;row-gap:clamp(28px,6vw,48px);}
+  .hero-grid > *{grid-column:1 !important;grid-row:auto !important;justify-self:stretch;align-self:auto;}
+  .hero-portrait{max-width:min(348px,62%);}
+  .hero-nav{justify-self:start;}
+  .hero-work{align-items:flex-start;text-align:left;}
+  .hero-title{max-width:none;}
+}
+
+/* fluid reveal - the wipe layer, under everything in the hero.
+   .no-fluid is set by the script when the effect can't or shouldn't run
+   (reduced motion, coarse pointer, no WebGL2) - the hero then behaves as a
+   plain light composition, so nothing here is load-bearing. */
+.hero-fluid{
+  position:absolute;inset:0;z-index:2;    /* above the portrait plate (1), below everything else (3) */
+  width:100%;height:100%;display:block;
+  pointer-events:none;                    /* the hero element does the listening */
+  opacity:0;transition:opacity .9s var(--ease);
+}
+.hero-fluid.is-live{opacity:1;}
+.hero.no-fluid .hero-fluid{display:none;}
+.hero.no-fluid .hero-portrait .plate{background-image:url('assets/Profile_picture.png');}
+
+/* ============================================================
+   SECTIONS
+   ============================================================ */
+.sec{padding-block:var(--section);}
+.sec-lead{display:flex;flex-direction:column;gap:var(--s22);}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s43);
+  flex-wrap:wrap;margin-bottom:var(--s54);}
+
+/* statement block */
+.statement p + p{margin-top:var(--s22);}
+
+/* proof strip */
+.proof{display:grid;gap:var(--gap);grid-template-columns:1fr;}
+@media (min-width:600px){ .proof{grid-template-columns:repeat(2,1fr);} }
+@media (min-width:1000px){ .proof{grid-template-columns:repeat(4,1fr);} }
+.proof-cell{background:var(--surface);border-radius:var(--r-card);padding:var(--s22);
+  display:flex;flex-direction:column;gap:var(--s10);min-height:150px;}
+.proof-cell .k{font-size:var(--t-h-sm);line-height:1.2;}
+.proof-cell .v{font-size:var(--t-meta);color:var(--fog);margin-top:auto;}
+.proof-cell a{color:var(--ink);box-shadow:0 1px 0 var(--hair);}
+
+/* ============================================================
+   WORK CARDS
+   ============================================================ */
+.grid3{display:grid;gap:var(--gap);grid-template-columns:1fr;}
+@media (min-width:700px){ .grid3{grid-template-columns:repeat(3,1fr);} }
+
+.card{
+  position:relative;display:flex;flex-direction:column;text-align:left;width:100%;
+  background:var(--surface);border-radius:var(--r-card);padding:var(--s22);
+  min-height:290px;
+  transition:background .26s var(--ease),box-shadow .26s var(--ease);
+}
+.card:hover{background:var(--surface-hi);box-shadow:var(--ring);}
+.card-iris{background:var(--iris);color:var(--on-accent);}                     /* the one accent card in this section */
+.card-iris:hover{background:var(--iris-deep);box-shadow:none;}
+.card-iris .card-kick,.card-iris .card-desc,.card-iris .card-num{color:rgba(255,255,255,.78);}
+.card-iris .tag{box-shadow:rgba(255,255,255,.32) 0 0 0 1px inset;color:var(--on-accent);}
+
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s12);margin-bottom:var(--s54);}
+.card-num{font-size:var(--t-caption);color:var(--fog);}
+.card-arrow{transition:transform .26s var(--ease);}
+.card:hover .card-arrow{transform:translate(3px,-3px);}
+.card-name{font-size:var(--t-h-sm);line-height:1.2;margin-top:auto;}
+.card-sm .card-name{font-size:22px;}
+.card-kick{font-size:var(--t-meta);color:var(--fog);margin-top:var(--s8);}
+.card-desc{font-size:var(--t-meta);color:var(--fog);margin-top:var(--s17);line-height:1.55;}
+.card-tags{display:flex;flex-wrap:wrap;gap:var(--s8);margin-top:var(--s22);}
+.tag{font-size:var(--t-caption);text-transform:uppercase;color:var(--fog);
+  padding:6px 12px;border-radius:var(--r-pill);box-shadow:var(--ring);}
+
+/* ============================================================
+   QUOTES
+   ============================================================ */
+.quotes{display:grid;gap:var(--gap);grid-template-columns:1fr;}
+@media (min-width:900px){ .quotes{grid-template-columns:repeat(3,1fr);} }
+.quote{background:var(--surface);border-radius:var(--r-card);padding:var(--s22);
+  display:flex;flex-direction:column;gap:var(--s22);}
+.quote p{font-size:var(--t-body-lg);line-height:1.4;}
+.quote footer{font-size:var(--t-caption);text-transform:uppercase;color:var(--fog);margin-top:auto;}
+
+/* ============================================================
+   TWO-COLUMN
+   ============================================================ */
+.cols{display:grid;gap:var(--s43);grid-template-columns:1fr;}
+@media (min-width:940px){ .cols{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:var(--s115);} }
+
+.points{display:flex;flex-direction:column;}
+.point{padding-block:var(--s22);border-top:1px solid var(--hair-soft);display:grid;gap:var(--s8);}
+.point:first-child{border-top:0;padding-top:0;}
+.point h3{font-size:var(--t-body-lg);line-height:1.4;}
+.point p{font-size:var(--t-body);color:var(--fog);}
+
+.tagrow{display:flex;flex-wrap:wrap;gap:var(--s8);margin-top:var(--s22);padding-top:var(--s22);
+  border-top:1px solid var(--hair-soft);}
+
+/* ============================================================
+   CONTACT
+   ============================================================ */
+.contact-actions{display:flex;flex-wrap:wrap;gap:var(--s12);margin-top:var(--s43);}
+.links{display:flex;flex-wrap:wrap;gap:var(--s12);margin-top:var(--s22);}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--s12);
+  padding-block:var(--s22);font-size:var(--t-caption);text-transform:uppercase;color:var(--fog);}
+
+/* ============================================================
+   CASE PANEL
+   ============================================================ */
+.panel-root{position:fixed;inset:0;z-index:90;pointer-events:none;overflow:clip;}
+.panel-root.open{pointer-events:auto;}
+/* The two are sequenced, not simultaneous. A transition uses the delay from
+   the style it is moving TO, so putting the delays on the open/closed states
+   choreographs both directions with no JS:
+     opening - scrim covers the page, then the drawer comes in
+     closing - the drawer leaves, then the scrim lifts */
+.scrim{position:absolute;inset:0;background:rgba(28,29,32,.55);opacity:0;
+  transition:opacity var(--t-scrim) var(--ease-modal) var(--t-drawer);}
+.panel-root.open .scrim{opacity:1;transition-delay:0s;}
+
+/* The panel IS the visible surface, so the instant its transition starts it is
+   already entering the frame. An earlier version slid a full-viewport element
+   with the surface padded into its right half, which meant half the travel
+   happened off-screen: the drawer appeared to stall, then arrive with a jolt. */
+.panel{position:absolute;top:0;right:0;height:100%;width:100%;display:flex;
+  pointer-events:none;              /* only the body takes clicks; anything else
+                                       falls through to the scrim */
+  transform:translateX(100%);
+  /* transform only, opacity untouched. Delay 0 here is the CLOSING delay -
+     the drawer leaves immediately; the open state below adds the wait. */
+  transition:transform var(--t-drawer) var(--ease-modal) 0s;}
+/* Half screen, and the travel is half a viewport with it. Note this halves the
+   distance without touching --t-drawer, so the drawer now moves at half the
+   speed it did when it swept the full width. That is the trade for having it
+   appear the moment it starts. */
+@media (min-width:900px){ .panel{width:50%;} }
+.panel-root.open .panel{transform:translateX(0);transition-delay:var(--t-scrim);}
+
+.panel-body{pointer-events:auto;}   /* only the surface itself is clickable */
+
+.panel-body{flex:1;min-width:0;height:100%;overflow-y:auto;background:var(--canvas);
+  overscroll-behavior:contain;}
+/* The bar rides over the hero image: white on the photograph, and it swaps to
+   the page ground once the hero has scrolled past, so Close stays legible and
+   reachable the whole way down. --bar-h is fixed because the hero is pulled up
+   underneath it by exactly that amount. */
+.panel-bar{position:sticky;top:0;z-index:2;height:var(--bar-h);
+  display:flex;align-items:center;justify-content:center;
+  padding-inline:var(--panel-pad);
+  color:#fff;background:transparent;border-bottom:1px solid rgba(255,255,255,.28);
+  transition:background .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease);}
+.panel-bar.is-stuck{background:var(--canvas);color:var(--ink);border-bottom-color:var(--hair-soft);}
+/* Transparent, not filled: an opaque bar hides the top of the plate while the
+   wipe passes behind it, and then pops that whole strip in at the end. Only the
+   type darkens, for as long as it is sitting on the still-white plate. */
+.panel-root.is-revealing .panel-bar{color:var(--ink);border-bottom-color:var(--hair-soft);}
+.panel-root.is-revealing .panel-bar .pill-solid{background:transparent;color:var(--ink);box-shadow:var(--ring);}
+.panel-bar-name{font-size:var(--t-meta);}
+.panel-bar .pill{position:absolute;right:var(--panel-pad);}
+.panel-bar.is-stuck .pill-solid{background:transparent;color:var(--ink);box-shadow:var(--ring);}
+
+/* hero plate, full-bleed inside the drawer */
+/* Wiped open from the top edge, in lockstep with the slide: same duration, same
+   curve, same delay, so the plate finishes exactly as the panel lands.
+
+   This only works because the photograph is warmed on idle (see warmHeroes).
+   Earlier attempts read as a broken load rather than as a reveal, and the
+   reason was never the timing - the image simply was not there yet.
+
+   The clip is on this WRAPPER, not the image: the plate has no ground of its
+   own - unrevealed it is the drawer's own white surface - so the title has to
+   be inside the clip and be uncovered with the photograph, or it hangs white
+   on white. aspect-ratio on the image holds the box at full height throughout,
+   so nothing below it moves.
+
+   Closing is deliberately not the mirror: 0s duration held back by --t-drawer,
+   so the clip resets only once the panel is off-screen. The plate leaves WITH
+   the drawer instead of collapsing in front of the reader. */
+.panel-hero{
+  position:relative;margin-top:calc(-1 * var(--bar-h));
+  clip-path:inset(0 0 100% 0);
+  transition:clip-path 0s var(--ease-modal) var(--t-drawer);
+}
+.panel-root.open .panel-hero{
+  clip-path:inset(0 0 0 0);
+  transition:clip-path var(--t-drawer) var(--ease-modal) var(--t-scrim);
+}
+.panel-hero-img{aspect-ratio:12 / 5;background:center/cover no-repeat;}
+.panel-hero h2{position:absolute;left:var(--panel-pad);bottom:clamp(14px,3.4%,34px);margin:0;
+  color:#fff;font-size:clamp(30px,2.8vw,54px);font-weight:700;line-height:1;letter-spacing:-.02em;}
+
+/* the meta block under it */
+.panel-meta{display:grid;gap:var(--s22);grid-template-columns:1fr;
+  padding-top:clamp(24px,6%,60px);}
+@media (min-width:900px){ .panel-meta{grid-template-columns:1fr 1fr;gap:var(--s43);} }
+.panel-meta dl{display:grid;gap:var(--s17);margin:0;}
+.panel-meta dt{font-size:var(--t-meta);color:var(--fog);}
+.panel-meta dd{margin:0;font-size:var(--t-body);}
+.panel-lede{font-size:var(--t-body-lg);font-weight:700;line-height:1.35;margin:0;}
+.panel-rule{border-top:1px solid var(--hair-soft);margin-top:clamp(24px,5%,48px);}
+
+.panel-pad{padding-inline:var(--panel-pad);}
+.panel-in{padding:0 0 var(--s115);
+  transition:opacity .4s var(--ease-modal);}
+/* the from-state, set for one frame before the new case fades in */
+.panel-in.is-fade{opacity:0;transition:none;}
+
+.panel-kick{font-size:var(--t-meta);color:var(--fog);margin-top:var(--s12);}
+
+.meta-list{margin-top:var(--s43);border-top:1px solid var(--hair-soft);}
+.meta-row{display:grid;grid-template-columns:110px 1fr;gap:var(--s17);padding-block:var(--s12);
+  border-bottom:1px solid var(--hair-soft);font-size:var(--t-meta);align-items:baseline;}
+.meta-row dt{text-transform:uppercase;font-size:var(--t-caption);color:var(--fog);}
+.meta-row dd{color:var(--ink);}
+
+.step{margin-top:var(--s54);}
+.step-h{display:flex;align-items:baseline;gap:var(--s12);margin-bottom:var(--s17);}
+.step-n{font-size:var(--t-caption);color:var(--fog);}
+.step-t{font-size:22px;line-height:1.2;}
+.step p{font-size:var(--t-body);color:var(--fog);}
+.step p + p{margin-top:var(--s12);}
+
+.fork{background:var(--surface);border-radius:var(--r-card);padding:var(--s22);margin-top:var(--s12);}
+.fork-t{font-size:var(--t-caption);text-transform:uppercase;color:var(--fog);}
+.fork h4{margin:var(--s10) 0 var(--s17);font-size:var(--t-body-lg);line-height:1.4;}
+.fork dl{display:grid;gap:var(--s10);}
+.fork-line{display:grid;grid-template-columns:84px 1fr;gap:var(--s12);font-size:var(--t-meta);align-items:baseline;}
+.fork-line dt{text-transform:uppercase;font-size:var(--t-caption);color:var(--fog);}
+.fork-line dd{color:var(--ink);line-height:1.55;}
+
+.scope{margin-top:var(--s17);border-top:1px solid var(--hair-soft);}
+.scope li{display:grid;grid-template-columns:44px 1fr;gap:var(--s12);padding-block:var(--s12);
+  border-bottom:1px solid var(--hair-soft);font-size:var(--t-meta);color:var(--fog);align-items:baseline;}
+.scope li b{color:var(--ink);font-size:var(--t-body-lg);font-variant-numeric:tabular-nums;}
+
+/* gallery drawer */
+.shots{display:grid;gap:var(--s22);margin-top:var(--s54);}
+.shot{margin:0;}
+.shot-plate{aspect-ratio:16 / 10;border-radius:var(--r-card);
+  background:var(--surface) center/cover no-repeat;}
+.shot-cap{margin-top:var(--s8);font-size:var(--t-caption);text-transform:uppercase;
+  color:var(--fog);font-variant-numeric:tabular-nums;}
+
+.pullquote{margin-top:var(--s43);padding:var(--s22);background:var(--surface);border-radius:var(--r-card);}
+.pullquote p{font-size:var(--t-body-lg);line-height:1.4;}
+.pullquote footer{margin-top:var(--s17);font-size:var(--t-caption);text-transform:uppercase;color:var(--fog);}
+
+.panel-nav{display:flex;justify-content:space-between;gap:var(--s12);margin-top:var(--s63);
+  padding-top:var(--s22);border-top:1px solid var(--hair-soft);}
+
+/* ============================================================
+   MOTION PREFERENCES
+   ============================================================ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;scroll-behavior:auto !important;}
+}
+</style>
+<!-- ============================ HERO ============================ -->
+<header class="hero" id="top">
+
+  <canvas class="hero-fluid" aria-hidden="true"></canvas>
+
+  <div class="hero-grid">
+
+    <figure class="hero-portrait">
+      <div class="plate" role="img" aria-label="Portrait of Artjoms Suslovs"></div>
+      <figcaption>
+        <span class="n inv">Artjoms Suslovs</span>
+        <span class="r inv-fog">Product designer</span>
+      </figcaption>
+    </figure>
+
+    <p class="hero-place inv">Riga, Latvia</p>
+    <p class="hero-clock inv" id="clock">--:--:--</p>
+
+    <nav class="hero-nav" aria-label="Primary">
+      <a class="inv" href="#work">All work</a>
+      <a class="inv" href="#about">About</a>
+      <a class="inv" href="#contact">Contact</a>
+      <a class="inv" href="#" download>Download CV</a>
+    </nav>
+
+    <!-- preview plates. Each shows assets/work/<slug>.webp once the file exists;
+         until then the surface colour shows through, no broken-image icon. -->
+    <div class="hero-preview" id="heroPreview">
+      <div class="hero-shot" data-slug="parfee" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="fiducia" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="textyourtenant" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="dbmc" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="travellite" style="background-image:url('assets/Project_preview.png')"></div>
+    </div>
+
+    <ul class="hero-work" id="heroWork">
+      <li><a class="inv" href="#/work/parfee" data-slug="parfee" data-case="parfee">Parfee</a></li>
+      <li><a class="inv" href="#/work/fiducia" data-slug="fiducia" data-case="fiducia">Fiducia</a></li>
+      <li><a class="inv" href="#/work/textyourtenant" data-slug="textyourtenant" data-case="textyourtenant">TextYourTenant</a></li>
+      <li><a class="inv" href="#/work/dbmc" data-slug="dbmc" data-case="dbmc">DBMC estimator</a></li>
+      <li><a class="inv" href="#/work/travellite" data-slug="travellite" data-case="travellite">Travellite</a></li>
+    </ul>
+
+    <h1 class="hero-title inv">I design multi-role systems where the state is complex and the interface can't be.</h1>
+
+    <p class="hero-lede inv-fog">
+      For four years I've taken MVPs from research through UI and design system to developer
+      handoff — SaaS dashboards, multi-role admin panels, mobile apps and e-commerce, for
+      clients across Europe and the US. Most of that work is the operational side of a product:
+      the screens a business actually runs on.
+    </p>
+
+  </div>
+</header>
+
+<main>
+
+
+  <!-- ============================ PROOF ============================ -->
+  <section class="pad" aria-label="At a glance">
+    <div class="proof">
+      <div class="proof-cell">
+        <div class="k">4 years</div>
+        <div class="v">Designing products end to end, research through handoff</div>
+      </div>
+      <div class="proof-cell">
+        <div class="k">100% JSS</div>
+        <div class="v">Top Rated on <a href="#">Upwork</a> across three years — verified client reviews</div>
+      </div>
+      <div class="proof-cell">
+        <div class="k">4 domains</div>
+        <div class="v">SaaS · Admin systems · Mobile · E-commerce</div>
+      </div>
+      <div class="proof-cell">
+        <div class="k">EN / LV / RU</div>
+        <div class="v">Proficient, native, native — plus basic German</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ QUOTES ============================ -->
+  <section class="pad" aria-label="Client feedback">
+    <div class="sec-head">
+      <h2 class="h-sm">What clients said</h2>
+      <p class="meta col" style="max-width:42ch">Verbatim from Upwork, where a review is tied to a completed contract and can't be edited afterwards.</p>
+    </div>
+    <div class="quotes" id="quotes"></div>
+  </section>
+
+  <!-- ============================ HOW I WORK ============================ -->
+  <section class="sec pad" id="how">
+    <div class="cols">
+      <div class="sec-lead">
+        <h2 class="h">Independent, but not alone.</h2>
+        <p class="meta">Most of my work has been freelance. That usually raises one question, so here is the direct answer to it.</p>
+      </div>
+      <div class="points">
+        <div class="point">
+          <h3>I work inside a team, not beside one</h3>
+          <p>Part-time at Brandsite since April 2026, designing e-commerce and corporate sites with a product
+             manager and iterating on their feedback. On Parfee, Fiducia, Xdose and Smartinterior I worked
+             alongside PMs — and on Fiducia directly with the development team.</p>
+        </div>
+        <div class="point">
+          <h3>I write the brief when there isn't one</h3>
+          <p>Clients arrive without specs. I run competitor and audience research, and build CJMs, user stories,
+             JTBD and information architecture before any interface exists.</p>
+        </div>
+        <div class="point">
+          <h3>I hand off systems, not screenshots</h3>
+          <p>Tokens, variables, states and variants, structured for engineering. The TextYourTenant team said
+             the system was easy for their engineers to implement — that is the outcome I design handoff for.</p>
+        </div>
+        <div class="point">
+          <h3>I design the whole state, not the happy path</h3>
+          <p>Empty, loading, partial, failed, and every combination a role can actually encounter. On multi-role
+             products this is most of the work.</p>
+        </div>
+        <div class="tagrow">
+          <span class="tag">Figma</span>
+          <span class="tag">Prototyping</span>
+          <span class="tag">Design tokens</span>
+          <span class="tag">Design systems</span>
+          <span class="tag">CJM · JTBD · IA</span>
+          <span class="tag">Competitor research</span>
+          <span class="tag">Engineering handoff</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ MORE WORK ============================ -->
+  <section class="pad" id="work">
+    <div class="sec-head">
+      <h2 class="h-sm">More work</h2>
+      <p class="meta">Shorter engagements, still shipped.</p>
+    </div>
+    <div class="grid3" id="supporting"></div>
+  </section>
+
+  <!-- ============================ ABOUT ============================ -->
+  <section class="sec pad" id="about">
+    <div class="cols">
+      <div class="sec-lead">
+        <h2 class="h">A physiotherapist who kept asking why the system was broken.</h2>
+      </div>
+      <div>
+        <p class="body-lg">
+          I trained as a physiotherapist and spent my degree learning one loop: assess a person, form a
+          hypothesis, test it, adjust. That is the same loop I run on products now — which is why I reach
+          for structure before I reach for a screen.
+        </p>
+        <p class="body-lg" style="margin-top:var(--s22)">
+          Since 2022 I've designed products for founders and product managers across Europe and the US,
+          mostly the operational side: admin systems, dashboards, and the state logic underneath them.
+          <span class="tbd" title="Artjoms to write">I'm now looking for an in-house product team where I can stay with one product long enough to see what my decisions actually did.</span>
+        </p>
+        <div class="tagrow">
+          <span class="tag">Uprock — Mobile App Design, 2024</span>
+          <span class="tag">WAYUP — UX/UI Design, 2021</span>
+          <span class="tag">BSc Physiotherapy — LASE, 2018</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ CONTACT ============================ -->
+  <section class="sec pad" id="contact">
+    <h2 class="h-lg col" style="max-width:15ch">Let's work together</h2>
+    <div class="contact-actions">
+      <a class="pill pill-iris" href="mailto:Artjoms.Suslovs@gmail.com">Artjoms.Suslovs@gmail.com</a>
+      <a class="pill" href="#" download>Download CV</a>
+    </div>
+    <div class="links">
+      <a class="pill pill-sm" href="https://www.linkedin.com/in/artjoms-suslovs-390536175" target="_blank" rel="noopener">LinkedIn</a>
+      <a class="pill pill-sm" href="#" target="_blank" rel="noopener">Behance</a>
+      <a class="pill pill-sm" href="#" target="_blank" rel="noopener">Upwork</a>
+      <a class="pill pill-sm" href="tel:+37128274160">+371 28274160</a>
+    </div>
+  </section>
+
+  <div class="pad">
+    <div class="foot hair">
+      <span>© 2026 Artjoms Suslovs</span>
+      <span>Riga, Latvia</span>
+    </div>
+  </div>
+
+</main>
+
+<!-- ============================ CASE PANEL ============================ -->
+<div class="panel-root" id="panelRoot" role="dialog" aria-modal="true" aria-labelledby="panelTitle" aria-hidden="true">
+  <div class="scrim" id="scrim"></div>
+  <div class="panel">
+    <div class="panel-body" id="panelBody" tabindex="-1">
+      <div class="panel-bar">
+        <span class="panel-bar-name" id="panelEyebrow"></span>
+        <button class="pill pill-sm pill-solid" id="panelClose">Close</button>
+      </div>
+      <div class="panel-in" id="panelIn"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const TBD = t => `<span class="tbd" title="Artjoms to write">${t}</span>`;
+
+const CASES = [
+  {
+    id:'parfee', num:'01', name:'Parfee', iris:true,
+    kicker:'On-demand household services · Nice, France',
+    desc:'A multi-role admin system: one booking, four interfaces, and four different meanings.',
+    tags:['Admin system','4 roles','Desktop + mobile'],
+    meta:{
+      Client:'Parfee — on-demand household services marketplace',
+      Year:TBD('year to confirm'),
+      Role:'Product Designer — sole designer on the product',
+      Team:'With a product manager and the development team',
+      Platforms:'Desktop + mobile',
+      Scope:'4 role interfaces · booking state model · scheduling · payouts'
+    },
+    context:[
+      `Parfee is a marketplace for household services. A customer books a cleaning, but the work is carried out
+       not by Parfee — it is carried out by an independent service provider company that employs the cleaners.`,
+      `That detail is the whole case. This is not a two-sided product. <strong>One booking is seen by four
+       different parties, and it means something different to each of them.</strong> Parfee's own admin needs
+       money and disputes. The provider company needs workload and payouts. The employee needs today's route.`
+    ],
+    problem:[
+      `A booking carries two independent facts: <strong>has it been paid for</strong>, and <strong>has the work
+       been confirmed and done</strong>. The statuses in use — Paid, Not Confirmed, Booked but Unpaid — look
+       like one axis but are two collapsed into one. Some real situations had no name, and each role was left
+       guessing what a status obliged them to do.`,
+      `Second: a job is not always one job. A team cleaning is several people working at once who have to finish
+       together. A task-by-task job is one person moving through a sequence. Those are different scheduling
+       models, and the product needed both.`
+    ],
+    forks:[
+      { t:'Fork 01', h:'How to model booking state',
+        opt:'One flat status list, or payment state and work state as two independent axes.',
+        chose:TBD('what you chose'),
+        gave:TBD('what you gave up'),
+        note:TBD('one concrete cascade: when X happens in admin, the provider sees Y and the employee sees Z') },
+      { t:'Fork 02', h:'Simultaneous or sequential scheduling — or both',
+        opt:'Pick one model and force the other to fit it, or support both properly.',
+        chose:'Both — simultaneous team execution and sequential task-by-task work.',
+        gave:TBD('what it cost: a more complex scheduling UI? longer build? harder mental model?'),
+        note:'Supporting both is the expensive answer. The cheap one is to pick a model and let the other bend.' },
+      { t:'Fork 03', h:'How much money to show an external company',
+        opt:'The payout dashboard exposes financial data to a party outside Parfee.',
+        chose:TBD('what you showed, and what you deliberately did not'),
+        gave:TBD('why — trust? disputes? providers verifying their own numbers?'),
+        note:'' }
+    ],
+    scope:[
+      ['4','connected role interfaces — main admin plus three external'],
+      ['2','independent state axes, with effects cascading across roles'],
+      ['2','scheduling models supported in one system'],
+      ['1','payout tracking dashboard for external provider companies'],
+      ['2','platforms — desktop and mobile']
+    ],
+    change:TBD('Required. Did the four interfaces genuinely need to be four? Did the state model hold up, or push complexity onto the operator? Was there a role you designed for without ever speaking to one? What did the developers push back on?'),
+    quote:{ t:'Consistently delivers exceptional, user-centered designs that elevate the product experience. Excels in collaboration, creativity, and attention to detail.', by:'Parfee · Nice, France' }
+  },
+  {
+    id:'fiducia', num:'02', name:'Fiducia',
+    kicker:'SaaS automation for Skool.com communities · Germany',
+    desc:'A full redesign that deliberately gave up its own visual identity to buy user familiarity.',
+    tags:['SaaS','Design system','80 hours'],
+    meta:{
+      Client:'Fiducia — moderation and automation for Skool.com communities',
+      Year:TBD('year to confirm'),
+      Role:'Product Designer — full product redesign',
+      Team:'With a product manager and developers',
+      Platforms:'Web app',
+      Scope:'Full redesign · scalable design system · flow simplification'
+    },
+    context:[
+      `Fiducia is a moderation and automation tool for communities hosted on Skool.com: spam and harassment
+       detection, message scheduling, and a workflow builder.`,
+      `Its users do not live in Fiducia. They live in Skool, and drop into Fiducia to fix something. That
+       changes what a redesign is for.`
+    ],
+    problem:[ TBD('What was actually wrong with the existing product? Support load, drop-off, the founder\'s own complaints, or your audit?') ],
+    forks:[
+      { t:'Fork 01', h:'Own identity, or native to Skool.com',
+        opt:'Design a product with its own visual language, or match Skool.com\'s patterns so closely that the tool reads as part of it.',
+        chose:'Matched Skool.com — its UI and UX patterns, so the tool feels native rather than bolted on.',
+        gave:'A distinct brand identity, and any chance of the product being visually memorable on its own.',
+        note:'The trade bought familiarity: no second mental model to learn for users already fluent in Skool.' },
+      { t:'Fork 02', h:'Redesign the surface, or rebuild the system',
+        opt:'Restyle the existing screens, or build a scalable design system underneath the redesign.',
+        chose:'Built the system — tokens, states and variants sized for growth beyond the current feature set.',
+        gave:TBD('what this cost within an 80-hour engagement'),
+        note:'' }
+    ],
+    scope:[
+      ['1','full product redesign, end to end'],
+      ['1','scalable design system built to carry future features'],
+      ['80','hours, total engagement']
+    ],
+    change:TBD('Required. Did matching Skool.com constrain you somewhere it shouldn\'t have? Did the system get used as intended after handoff?'),
+    quote:{ t:'I can genuinely recommend Artjoms. He completely redesigned our dashboard with great attention to detail, communicated well throughout, and was always open to making adjustments when needed.', by:'Fiducia · Germany' }
+  },
+  {
+    id:'textyourtenant', num:'03', name:'TextYourTenant',
+    kicker:'Bulk SMS for property managers · USA',
+    desc:'The handoff case — a design system engineers could implement without a translator.',
+    tags:['SaaS','Responsive','Handoff'],
+    meta:{
+      Client:'TextYourTenant — bulk SMS platform for property managers',
+      Year:TBD('year to confirm'),
+      Role:'Product Designer',
+      Team:TBD('solo, or with a PM?'),
+      Platforms:'Responsive web + mobile views',
+      Scope:'Dashboard · mobile views · design system for engineering'
+    },
+    context:[
+      `Property managers send the same message to a lot of tenants at once — rent reminders, maintenance
+       windows, building notices. TextYourTenant schedules and sends those in bulk.`
+    ],
+    problem:[ TBD('What made this hard? Scheduling? Recipient segmentation? Message state — queued, sent, failed, replied?') ],
+    forks:[
+      { t:'Fork 01', h:TBD('name the real fork'), opt:TBD('the two options'), chose:TBD('what you chose'), gave:TBD('what you gave up'), note:'' }
+    ],
+    scope:[
+      ['1','mobile-responsive web dashboard'],
+      ['1','design system delivered ready for engineering handoff']
+    ],
+    change:TBD('Required.'),
+    quote:{ t:'Artjoms was an absolute pleasure to work with… it was quickly apparent we were working with a senior designer. His design system was easy for our engineers to implement, he proactively asked key user experience questions, and had fast response times to questions and feedback.', by:'TextYourTenant · USA' }
+  },
+  {
+    id:'travellite', num:'04', name:'Travellite',
+    kicker:'Tour search · Mobile app',
+    desc:'An academic case study. Included because it is the only place you can see how I reason with no client in the room.',
+    tags:['Concept project','Mobile','iOS + Android'],
+    meta:{
+      Client:'None — academic case study, Uprock mobile design course',
+      Year:'2023–2024',
+      Role:'Product Designer — solo',
+      Team:'Solo',
+      Platforms:'Mobile app',
+      Scope:TBD('scope to confirm')
+    },
+    context:[
+      `<strong>This is a concept project, not client work.</strong> It comes from my mobile design course, and
+       it is here for one reason: it is the only case where nobody was constraining me, so it shows how I
+       reason when every trade-off is mine to make.`,
+      TBD('What the app does, who it is for, and what you set out to solve.')
+    ],
+    problem:[ TBD('The problem you chose, and why that one.') ],
+    forks:[
+      { t:'Fork 01', h:TBD('name the fork'), opt:TBD('the two options'), chose:TBD('what you chose'), gave:TBD('what you gave up'), note:'' }
+    ],
+    scope:[ ['—', TBD('screens, flows, prototype — whatever is true')] ],
+    change:TBD('Required — and easiest to write honestly here, since there was no client to please.'),
+    quote:null
+  }
+];
+
+const SUPPORTING = [
+  { id:'dbmc', num:'05', name:'DBMC', kicker:'Renovation estimator',
+    desc:'A guided flow that walks a homeowner through estimating a renovation.', tags:['Product flow','Web'], shots:4 },
+  { id:'xdose', num:'06', name:'Xdose', kicker:'E-commerce',
+    desc:'Online store design, built with a product manager.', tags:['E-commerce','With a PM'], shots:4 },
+  { id:'smartinterior', num:'07', name:'Smartinterior', kicker:'Corporate website',
+    desc:'Corporate site for an interior company, built with a product manager.', tags:['Corporate','With a PM'], shots:4 }
+];
+
+const QUOTES = [
+  { t:'It was quickly apparent we were working with a senior designer. His design system was easy for our engineers to implement.', by:'TextYourTenant · USA' },
+  { t:'Consistently delivers exceptional, user-centered designs that elevate the product experience. Excels in collaboration, creativity, and attention to detail.', by:'Parfee · Nice, France' },
+  { t:'He completely redesigned our dashboard with great attention to detail, communicated well throughout, and was always open to making adjustments.', by:'Fiducia · Germany' }
+];
+
+/* ============================================================
+   RENDER — cards
+   ============================================================ */
+const ARROW = `<svg class="card-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M4 12L12 4M5.6 4H12v6.4"/></svg>`;
+
+/* Every drawer opens on this plate until a project brings its own: give an
+   entry a `hero` field and it overrides. */
+const HERO = 'assets/Drawer_hero.jpg';
+
+/* The second kind of drawer: not an argument, just the screens. Plates are
+   background-images, so a missing file paints nothing and the surface shows
+   through - no broken-image icon, no layout shift, same as everywhere else. */
+function galleryHTML(p){
+  const n = p.shots || 4;
+  const shots = Array.from({length:n}, (_, k) => {
+    const i = String(k+1).padStart(2,'0');
+    return `<figure class="shot">
+      <div class="shot-plate" style="background-image:url('assets/screens/${p.id}/${i}.webp')"></div>
+      <figcaption class="shot-cap">${i} / ${String(n).padStart(2,'0')}</figcaption>
+    </figure>`;
+  }).join('');
+  return `
+    <div class="panel-hero">
+      <div class="panel-hero-img" style="background-image:url('${p.hero || HERO}')"></div>
+      <h2 id="panelTitle">${p.name}</h2>
+    </div>
+
+    <div class="panel-pad">
+      <div class="panel-meta">
+        <dl><dt>Kind</dt><dd>${p.kicker}</dd></dl>
+        <p class="panel-lede">${p.desc}</p>
+      </div>
+      <div class="panel-rule"></div>
+      <div class="card-tags" style="margin-top:var(--s22)">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="shots">${shots}</div>
+    </div>`;
+}
+
+function cardHTML(p, small){
+  return `<button class="card ${small?'card-sm':''} ${p.iris?'card-iris':''}" data-case="${p.id}">
+    <div class="card-top">
+      <span class="card-num">${p.num}</span>
+      ${ARROW}
+    </div>
+    <div class="card-name">${p.name}</div>
+    <div class="card-kick">${p.kicker}</div>
+    <div class="card-desc">${p.desc}</div>
+    <div class="card-tags">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+  </button>`;
+}
+
+/* DBMC is promoted to the hero list, so it is not repeated in this grid -
+   but it stays in SUPPORTING because that is where its drawer content lives. */
+document.getElementById('supporting').innerHTML =
+  SUPPORTING.filter(p=>p.id!=='dbmc').map(p=>cardHTML(p,true)).join('');
+document.getElementById('quotes').innerHTML = QUOTES.map(q=>`
+  <figure class="quote">
+    <p>${q.t}</p>
+    <figcaption><footer>${q.by}</footer></figcaption>
+  </figure>`).join('');
+
+/* ============================================================
+   RENDER — case panel
+   ============================================================ */
+const root   = document.getElementById('panelRoot');
+const bodyEl = document.getElementById('panelBody');
+const inEl   = document.getElementById('panelIn');
+
+function caseHTML(c){
+  const meta = Object.entries(c.meta).map(([k,v])=>
+    `<dt>${k}</dt><dd>${v}</dd>`).join('');
+
+  const forks = c.forks.map(f=>`
+    <div class="fork">
+      <div class="fork-t">${f.t}</div>
+      <h4>${f.h}</h4>
+      <dl>
+        <div class="fork-line"><dt>Options</dt><dd>${f.opt}</dd></div>
+        <div class="fork-line"><dt>Chose</dt><dd>${f.chose}</dd></div>
+        <div class="fork-line"><dt>Gave up</dt><dd>${f.gave}</dd></div>
+        ${f.note?`<div class="fork-line"><dt>Why</dt><dd>${f.note}</dd></div>`:''}
+      </dl>
+    </div>`).join('');
+
+  const scope = c.scope.map(([n,t])=>`<li><b>${n}</b><span>${t}</span></li>`).join('');
+
+  return `
+    <div class="panel-hero">
+      <div class="panel-hero-img" style="background-image:url('${c.hero || HERO}')"></div>
+      <h2 id="panelTitle">${c.name}</h2>
+    </div>
+
+    <div class="panel-pad">
+    <p class="panel-kick">${c.kicker}</p>
+    <div class="panel-meta">
+      <dl>${meta}</dl>
+      <p class="panel-lede">${c.desc}</p>
+    </div>
+    <div class="panel-rule"></div>
+
+    <div class="step">
+      <div class="step-h"><span class="step-n">01</span><span class="step-t">Context</span></div>
+      ${c.context.map(p=>`<p>${p}</p>`).join('')}
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="step-n">02</span><span class="step-t">Problem</span></div>
+      ${c.problem.map(p=>`<p>${p}</p>`).join('')}
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="step-n">03</span><span class="step-t">Decisions</span></div>
+      <p>Every fork below names what was given up. A decision without a sacrifice is a preference.</p>
+      ${forks}
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="step-n">04</span><span class="step-t">Outcome</span></div>
+      <p class="caption">Shipped</p>
+      <ul class="scope">${scope}</ul>
+      <p class="caption" style="margin-top:var(--s22)">What I would change now</p>
+      <p>${c.change}</p>
+    </div>
+
+    ${c.quote?`<blockquote class="pullquote"><p>“${c.quote.t}”</p><footer>${c.quote.by}</footer></blockquote>`:''}
+
+    <div class="panel-nav">
+      <button class="pill pill-sm" data-nav="prev">← Previous</button>
+      <button class="pill pill-sm" data-nav="next">Next →</button>
+    </div>
+    </div>`;
+}
+
+/* Two kinds of entry share one drawer: CASES render an argument, SUPPORTING
+   render screens. Everything else - keyboard, deep links, close, the slide -
+   is the same machinery. */
+function entryOf(id){
+  const i = CASES.findIndex(c=>c.id===id);
+  if(i >= 0) return { list:CASES, i, kind:'case' };
+  const j = SUPPORTING.findIndex(c=>c.id===id);
+  if(j >= 0) return { list:SUPPORTING, i:j, kind:'gallery' };
+  return null;
+}
+
+let current = null;
+let lastFocus = null;
+let revealRaf = 0;
+
+function openCase(id, push){
+  const entry = entryOf(id);
+  if(!entry) return;
+  const wasOpen = root.classList.contains('open');
+  current = entry;
+  const c = entry.list[entry.i];
+  lastFocus = document.activeElement;
+  inEl.innerHTML = entry.kind === 'case' ? caseHTML(c) : galleryHTML(c);
+
+  /* Stepping between cases while the panel is already open: the panel holds
+     still and the content fades in, the way their arrows swap projects
+     without re-running the slide. On a cold open there is nothing to fade -
+     the content rides in with the panel. */
+  if(wasOpen){
+    inEl.classList.add('is-fade');
+    void inEl.offsetWidth;              /* commit the from-state */
+    inEl.classList.remove('is-fade');
+  }
+  const bar = document.querySelector('.panel-bar');
+
+  if(!wasOpen){
+    void inEl.offsetWidth;              /* commit the plate's clipped start state */
+    /* The bar's white type would be invisible on a plate that is still white,
+       so it darkens - but only until the wipe has travelled its own height,
+       not until the whole plate is uncovered. Measured off the real animation
+       rather than a guessed delay, so it holds at any viewport. */
+    const plate = inEl.querySelector('.panel-hero');
+    const barH  = parseFloat(getComputedStyle(root).getPropertyValue('--bar-h'));
+    const share = plate && plate.offsetHeight ? barH / plate.offsetHeight : 1;
+    root.classList.add('is-revealing');
+    cancelAnimationFrame(revealRaf);
+    const watch = () => {
+      const a = plate && plate.getAnimations()[0];
+      const p = a ? (a.effect.getComputedTiming().progress ?? 0) : 1;
+      if(p >= share){ root.classList.remove('is-revealing'); return; }
+      revealRaf = requestAnimationFrame(watch);
+    };
+    revealRaf = requestAnimationFrame(watch);
+  }
+  document.getElementById('panelEyebrow').textContent = c.name;
+  /* the bar is transparent over the hero and solid once past it */
+  const hero = inEl.querySelector('.panel-hero');
+  const limit = hero ? hero.offsetHeight - parseFloat(getComputedStyle(root).getPropertyValue('--bar-h')) : 0;
+  const sync = () => bar.classList.toggle('is-stuck', bodyEl.scrollTop > Math.max(limit, 0));
+  bodyEl.onscroll = sync;
+  sync();
+  root.classList.add('open');
+  root.setAttribute('aria-hidden','false');
+  document.body.classList.add('is-locked');
+  bodyEl.scrollTop = 0;
+  bodyEl.focus({ preventScroll:true });   /* the panel is still off-screen at this
+                                             point; a scroll-into-view here drags the
+                                             whole layer sideways and it creeps back
+                                             as the panel arrives - the bounce */
+  if(push !== false && location.hash !== '#/work/'+id) history.pushState({id},'', '#/work/'+id);
+}
+
+function closeCase(push){
+  cancelAnimationFrame(revealRaf);
+  root.classList.remove('is-revealing');
+  root.classList.remove('open');
+  root.setAttribute('aria-hidden','true');
+  document.body.classList.remove('is-locked');
+  current = null;
+  if(push !== false && location.hash.startsWith('#/work/')) history.pushState({},'', location.pathname + location.search);
+  if(lastFocus) lastFocus.focus();
+}
+
+function step(d){
+  if(!current) return;
+  const L = current.list;
+  openCase(L[(current.i + d + L.length) % L.length].id);
+}
+
+document.addEventListener('click', e => {
+  const card = e.target.closest('[data-case]');
+  if(card){
+    /* The hero links carry a real href for middle-click and no-JS. Left alone,
+       the browser follows it after this handler and the hash router opens the
+       same entry a second time - by then the drawer is already open, so the
+       hero renders in its finished state and the wipe never runs. Grid cards
+       are buttons and never had the problem. openCase pushes the hash itself. */
+    e.preventDefault();
+    openCase(card.dataset.case);      /* openCase ignores ids it does not know */
+    return;
+  }
+  const nav = e.target.closest('[data-nav]');
+  if(nav){ step(nav.dataset.nav === 'next' ? 1 : -1); return; }
+  if(e.target.closest('#panelClose') || e.target.closest('#scrim')) closeCase();
+});
+
+document.addEventListener('keydown', e => {
+  if(!current) return;
+  if(e.key === 'Escape')     closeCase();
+  if(e.key === 'ArrowRight') step(1);
+  if(e.key === 'ArrowLeft')  step(-1);
+});
+
+function fromHash(push){
+  const m = location.hash.match(/^#\/work\/(.+)$/);
+  if(m) openCase(m[1], push);
+  else if(current >= 0) closeCase(false);
+}
+window.addEventListener('popstate', () => fromHash(false));
+fromHash(false);
+
+/* Warm every drawer hero once the page is idle. These are background-images on
+   elements that do not exist until a drawer opens, so without this the browser
+   only starts fetching at the moment of opening: the panel lands first and the
+   photograph arrives behind it, which reads as the drawer loading in pieces.
+   decode() takes it past the fetch and through decoding, so the first paint of
+   an opened drawer already has the image. */
+(function warmHeroes(){
+  const urls = [...new Set([...CASES, ...SUPPORTING].map(p => p.hero || HERO))];
+  const warm = () => urls.forEach(u => {
+    const im = new Image();
+    im.src = u;
+    if(im.decode) im.decode().catch(()=>{});   /* a failed warm must stay silent */
+  });
+  if('requestIdleCallback' in window) requestIdleCallback(warm, { timeout:2500 });
+  else setTimeout(warm, 1200);
+})();
+
+/* ============================================================
+   CLOCK
+   ============================================================ */
+const clockEl = document.getElementById('clock');
+const fmt = new Intl.DateTimeFormat('en-GB',{
+  hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Europe/Riga'
+});
+(function tick(){
+  clockEl.textContent = fmt.format(new Date());
+  setTimeout(tick, 1000);
+})();
+
+/* ============================================================
+   HERO — WORK PREVIEW
+   Hovering a project name swaps the plate beside it. Fiducia is
+   the resting state, matching the artboard.
+   ============================================================ */
+(function heroPreview(){
+  const list = document.getElementById('heroWork');
+  const shots = document.getElementById('heroPreview');
+  if(!list || !shots) return;
+
+  const links = [...list.querySelectorAll('a')];
+  const plates = [...shots.querySelectorAll('.hero-shot')];
+  const REST = 'fiducia';
+
+  function show(slug){
+    links.forEach(a => a.classList.toggle('is-on', a.dataset.slug === slug));
+    plates.forEach(p => p.classList.toggle('is-on', p.dataset.slug === slug));
+  }
+  const zoom = on => shots.classList.toggle('is-zoom', on);
+  links.forEach(a => {
+    a.addEventListener('pointerenter', () => { show(a.dataset.slug); zoom(true); });
+    a.addEventListener('focus',        () => { show(a.dataset.slug); zoom(true); });
+    a.addEventListener('blur',         () => zoom(false));
+  });
+  list.addEventListener('pointerleave', () => { show(REST); zoom(false); });
+  show(REST);
+})();
+
+/* ============================================================
+   HERO — FLUID REVEAL
+
+   A GPU fluid simulation (incompressible Navier–Stokes, ping-pong
+   framebuffers) confined to the hero. The dye field is not drawn as
+   ink — it is used as a MASK. The cursor wipes the calm surface away
+   and the system schematic underneath shows through, which is the
+   argument the page is making in words two screens further down.
+
+   Raw WebGL2, no library. Runs only where it should: fine pointer,
+   motion allowed, WebGL2 with float render targets. Anything else
+   falls back to the hero as it was.
+   ============================================================ */
+(function heroFluid(){
+  const hero = document.getElementById('top');
+  const cv   = hero && hero.querySelector('.hero-fluid');
+  const hint = hero && hero.querySelector('.hero-hint');
+  if(!hero || !cv) return;
+
+  const bail = () => { hero.classList.add('no-fluid'); };
+
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches) return bail();
+  if(!matchMedia('(hover:hover) and (pointer:fine)').matches) return bail();
+
+  const gl = cv.getContext('webgl2',{
+    alpha:true, premultipliedAlpha:false, antialias:false,
+    depth:false, stencil:false, powerPreference:'high-performance'
+  });
+  if(!gl) return bail();
+  if(!gl.getExtension('EXT_color_buffer_float') &&
+     !gl.getExtension('EXT_color_buffer_half_float')) return bail();
+
+  /* ---------- tuning ---------- */
+  const SIM_RES = 128;      /* velocity/pressure grid — cheap */
+  const DYE_RES = 512;      /* the mask itself — needs the detail */
+  const VEL_DISS = 0.90;    /* how fast the motion dies down */
+  /* How fast the surface closes back over — the trail's lifetime, and the
+     only thing that controls it. Dye decays as exp(-DYE_DISS * t), so
+     lifetime is proportional to 1/DYE_DISS: to cut the trail's life by 30%
+     the number goes UP by 1/0.7, not down by 0.3. 0.60 → 0.857 → 1.224,
+     two 30% cuts, half-life now ~0.44s of wall clock. This is independent
+     of SPEED — SPEED sets the pace of the whole effect, this sets how long
+     the ink survives at that pace. */
+  const DYE_DISS = 1.224;
+  const PRESSURE = 0.8;
+  const ITER     = 18;      /* Jacobi iterations */
+  const CURL     = 15;      /* vorticity confinement — the swirl */
+  /* Splat size. The shader is exp(-|p|^2 / uRadius), so the visible spot
+     radius goes as sqrt(RADIUS) — this number is an area, not a length.
+     Making the cursor 40% smaller means multiplying by 0.6^2 = 0.36, not
+     by 0.6: 0.32 -> 0.115. Scaling it linearly would have shrunk the spot
+     by only 22%. */
+  const RADIUS   = 0.115;
+  /* The revealed photograph is dimmed before it becomes a texture. The
+     difference blend that keeps the hero type readable resolves to
+     |255 - backdrop|, so a backdrop near mid-grey renders text that is
+     also near mid-grey - invisible. Pushing the photo down into the
+     shadows keeps it clear of that band, and it is a night shot anyway. */
+  const REVEAL_DIM = 0.70;   /* measured: at 0.55 3.2% of the photo still rendered
+                                text below 3:1; at 0.70 nothing does, and the brightest
+                                pixel drops from 121 to 84 while the shot stays legible. */
+  const FORCE    = 6000;
+  const INK      = [0.271, 0.361, 0.914];   /* --iris #455ce9 */
+
+  /* Global time scale. Every part of the animation reads its rate off dt —
+     advection, vorticity, and both dissipations — so scaling dt once plays
+     the whole effect faster without changing a single thing about how it
+     looks. 1.3 = 30% faster. This is the only knob for pace; do not chase
+     the same result by editing DYE_DISS and VEL_DISS separately. */
+  const SPEED    = 1.3;
+
+  /* ---------- shaders ---------- */
+  const VERT = `#version 300 es
+  precision highp float;
+  in vec2 aPos;
+  uniform vec2 uTexel;
+  out vec2 vUv, vL, vR, vT, vB;
+  void main(){
+    vUv = aPos * 0.5 + 0.5;
+    vL = vUv - vec2(uTexel.x, 0.0);
+    vR = vUv + vec2(uTexel.x, 0.0);
+    vT = vUv + vec2(0.0, uTexel.y);
+    vB = vUv - vec2(0.0, uTexel.y);
+    gl_Position = vec4(aPos, 0.0, 1.0);
+  }`;
+
+  const F = body => `#version 300 es
+  precision highp float;
+  precision highp sampler2D;
+  in vec2 vUv, vL, vR, vT, vB;
+  out vec4 FragColor;
+  ` + body;
+
+  const SPLAT = `
+  uniform sampler2D uTarget; uniform float uAspect;
+  uniform vec3 uColor; uniform vec2 uPoint; uniform float uRadius;
+  void main(){
+    vec2 p = vUv - uPoint; p.x *= uAspect;
+    vec3 splat = exp(-dot(p,p) / uRadius) * uColor;
+    FragColor = vec4(texture(uTarget, vUv).xyz + splat, 1.0);
+  }`;
+
+  const ADVECT = `
+  uniform sampler2D uVelocity, uSource;
+  uniform vec2 uTexel; uniform float uDt, uDiss;
+  void main(){
+    vec2 coord = vUv - uDt * texture(uVelocity, vUv).xy * uTexel;
+    FragColor = texture(uSource, coord) / (1.0 + uDiss * uDt);
+    FragColor.a = 1.0;
+  }`;
+
+  const DIVERGENCE = `
+  uniform sampler2D uVelocity;
+  void main(){
+    float L = texture(uVelocity, vL).x, R = texture(uVelocity, vR).x;
+    float T = texture(uVelocity, vT).y, B = texture(uVelocity, vB).y;
+    vec2  C = texture(uVelocity, vUv).xy;
+    if(vL.x < 0.0) L = -C.x;
+    if(vR.x > 1.0) R = -C.x;
+    if(vT.y > 1.0) T = -C.y;
+    if(vB.y < 0.0) B = -C.y;
+    FragColor = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
+  }`;
+
+  const CURL_S = `
+  uniform sampler2D uVelocity;
+  void main(){
+    float L = texture(uVelocity, vL).y, R = texture(uVelocity, vR).y;
+    float T = texture(uVelocity, vT).x, B = texture(uVelocity, vB).x;
+    FragColor = vec4(0.5 * (R - L - T + B), 0.0, 0.0, 1.0);
+  }`;
+
+  const VORTICITY = `
+  uniform sampler2D uVelocity, uCurl;
+  uniform float uCurlStr, uDt;
+  void main(){
+    float L = texture(uCurl, vL).x, R = texture(uCurl, vR).x;
+    float T = texture(uCurl, vT).x, B = texture(uCurl, vB).x;
+    float C = texture(uCurl, vUv).x;
+    vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
+    force /= length(force) + 0.0001;
+    force *= uCurlStr * C;
+    force.y *= -1.0;
+    vec2 vel = texture(uVelocity, vUv).xy + force * uDt;
+    FragColor = vec4(clamp(vel, -1000.0, 1000.0), 0.0, 1.0);
+  }`;
+
+  const PRESSURE_S = `
+  uniform sampler2D uPressure, uDivergence;
+  void main(){
+    float L = texture(uPressure, vL).x, R = texture(uPressure, vR).x;
+    float T = texture(uPressure, vT).x, B = texture(uPressure, vB).x;
+    float div = texture(uDivergence, vUv).x;
+    FragColor = vec4((L + R + B + T - div) * 0.25, 0.0, 0.0, 1.0);
+  }`;
+
+  const GRADIENT = `
+  uniform sampler2D uPressure, uVelocity;
+  void main(){
+    float L = texture(uPressure, vL).x, R = texture(uPressure, vR).x;
+    float T = texture(uPressure, vT).x, B = texture(uPressure, vB).x;
+    vec2 v = texture(uVelocity, vUv).xy - vec2(R - L, T - B);
+    FragColor = vec4(v, 0.0, 1.0);
+  }`;
+
+  const CLEAR = `
+  uniform sampler2D uTexture; uniform float uValue;
+  void main(){ FragColor = uValue * texture(uTexture, vUv); }`;
+
+  /* the whole point: dye becomes a mask, not a colour */
+  const COMPOSITE = `
+  uniform sampler2D uDye, uReveal;
+  uniform vec3 uInk;
+  void main(){
+    float e = texture(uDye, vUv).r;
+    float m   = smoothstep(0.060, 0.26, e);                   /* how open the surface is */
+    /* a narrow band, not a haze: ink pools only where the wipe is still wet */
+    float rim = smoothstep(0.060, 0.140, e) * (1.0 - smoothstep(0.140, 0.36, e));
+    vec3 col = texture(uReveal, vUv).rgb;
+    col = mix(col, uInk, rim * 0.78);
+    FragColor = vec4(col, m);
+  }`;
+
+  /* ---------- gl plumbing ---------- */
+  let programs;
+  try {
+    const compile = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const vs = compile(gl.VERTEX_SHADER, VERT);
+    const prog = src => {
+      const p = gl.createProgram();
+      gl.attachShader(p, vs);
+      gl.attachShader(p, compile(gl.FRAGMENT_SHADER, F(src)));
+      gl.bindAttribLocation(p, 0, 'aPos');
+      gl.linkProgram(p);
+      if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      const u = {};
+      const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+      for(let i = 0; i < n; i++){
+        const name = gl.getActiveUniform(p, i).name;
+        u[name] = gl.getUniformLocation(p, name);
+      }
+      return { p, u };
+    };
+    programs = {
+      splat:      prog(SPLAT),
+      advect:     prog(ADVECT),
+      divergence: prog(DIVERGENCE),
+      curl:       prog(CURL_S),
+      vorticity:  prog(VORTICITY),
+      pressure:   prog(PRESSURE_S),
+      gradient:   prog(GRADIENT),
+      clear:      prog(CLEAR),
+      composite:  prog(COMPOSITE)
+    };
+  } catch(err){
+    console.warn('hero fluid disabled:', err.message);
+    return bail();
+  }
+
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.disable(gl.BLEND);
+  gl.disable(gl.DEPTH_TEST);
+
+  const draw = target => {
+    if(target){ gl.bindFramebuffer(gl.FRAMEBUFFER, target.f); gl.viewport(0, 0, target.w, target.h); }
+    else      { gl.bindFramebuffer(gl.FRAMEBUFFER, null);     gl.viewport(0, 0, cv.width, cv.height); }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  };
+
+  function makeFbo(w, h){
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+    const f = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return { tex, f, w, h, texel:[1/w, 1/h],
+      bind(unit){ gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); return unit; },
+      dispose(){ gl.deleteTexture(tex); gl.deleteFramebuffer(f); } };
+  }
+  function makeDouble(w, h){
+    let a = makeFbo(w, h), b = makeFbo(w, h);
+    return { w, h, texel:a.texel,
+      get read(){ return a; }, get write(){ return b; },
+      swap(){ const t = a; a = b; b = t; },
+      dispose(){ a.dispose(); b.dispose(); } };
+  }
+
+  /* ---------- the layer underneath ----------
+     Drawn on a 2D canvas and uploaded as a texture: an admin-system
+     schematic — rail, table, state machine. It is deliberately the
+     kind of screen the case studies are about. Swap the fill for an
+     <img> draw later if you'd rather reveal the portrait in colour. */
+  function paintSchematic(w, h){
+    const c = document.createElement('canvas');
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    c.width = Math.max(2, Math.round(w * dpr));
+    c.height = Math.max(2, Math.round(h * dpr));
+    const x = c.getContext('2d');
+    x.scale(dpr, dpr);
+
+    const IRIS = '#455ce9',
+          LINE = 'rgba(255,255,255,.30)',
+          SOFT = 'rgba(255,255,255,.19)',
+          BAR  = 'rgba(255,255,255,.40)',
+          TXT  = 'rgba(255,255,255,.62)';
+
+    let seed = 7;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+
+    const rr = (px, py, pw, ph, r) => {
+      x.beginPath();
+      if(x.roundRect) x.roundRect(px, py, pw, ph, r);
+      else x.rect(px, py, pw, ph);
+    };
+    const label = (s, px, py, col) => {
+      x.fillStyle = col || TXT;
+      x.font = '450 10px Geist, ui-sans-serif, sans-serif';
+      if('letterSpacing' in x) x.letterSpacing = '.05em';
+      x.fillText(s.toUpperCase(), px, py);
+      if('letterSpacing' in x) x.letterSpacing = '0px';
+    };
+
+    x.fillStyle = '#0f1015';
+    x.fillRect(0, 0, w, h);
+
+    /* baseline grid */
+    x.strokeStyle = 'rgba(255,255,255,.075)';
+    x.lineWidth = 1;
+    for(let gx = 0; gx < w; gx += 44){ x.beginPath(); x.moveTo(gx + .5, 0); x.lineTo(gx + .5, h); x.stroke(); }
+    for(let gy = 0; gy < h; gy += 44){ x.beginPath(); x.moveTo(0, gy + .5); x.lineTo(w, gy + .5); x.stroke(); }
+
+    const pad  = Math.max(12, Math.min(43, w * .034));
+    const wide = w >= 1100;
+    const mid  = w >= 760;
+    const top  = pad + 64;
+    const bot  = h - pad - 48;
+
+    let mx = pad, mw = w - pad * 2;
+
+    /* left rail */
+    if(mid){
+      const rw = 176;
+      x.strokeStyle = LINE; x.lineWidth = 1;
+      rr(pad + .5, top + .5, rw, bot - top, 10); x.stroke();
+      label('navigation', pad + 16, top + 24);
+      for(let i = 0; i < 8; i++){
+        const iy = top + 46 + i * 32;
+        if(iy > bot - 20) break;
+        if(i === 1){
+          x.fillStyle = IRIS; rr(pad + 10, iy - 2, rw - 20, 22, 6); x.fill();
+          x.fillStyle = 'rgba(255,255,255,.85)'; rr(pad + 22, iy + 5, 74, 8, 4); x.fill();
+        } else {
+          x.fillStyle = SOFT; rr(pad + 22, iy + 5, 62 + rnd() * 62, 8, 4); x.fill();
+        }
+      }
+      mx = pad + rw + 28;
+      mw = w - mx - pad;
+    }
+
+    /* right column — state machine */
+    if(wide){
+      const cw = 216;
+      const rx = w - pad - cw;
+      mw = rx - 32 - mx;
+      label('state', rx, top + 24);
+      const states = ['draft', 'submitted', 'in review', 'approved', 'settled'];
+      const step = Math.min(74, (bot - top - 60) / states.length);
+      states.forEach((s, i) => {
+        const ny = top + 56 + i * step;
+        if(ny > bot) return;
+        if(i < states.length - 1){
+          x.strokeStyle = LINE; x.lineWidth = 1;
+          x.beginPath(); x.moveTo(rx + 8.5, ny + 8); x.lineTo(rx + 8.5, ny + step - 8); x.stroke();
+        }
+        x.beginPath(); x.arc(rx + 8.5, ny, 6.5, 0, Math.PI * 2);
+        if(i === 2){ x.fillStyle = IRIS; x.fill(); } else { x.strokeStyle = LINE; x.stroke(); }
+        label(s, rx + 26, ny + 4, i === 2 ? 'rgba(255,255,255,.72)' : TXT);
+        x.fillStyle = SOFT; rr(rx + 26, ny + 12, 60 + rnd() * 70, 6, 3); x.fill();
+      });
+    }
+
+    /* the table */
+    label('orders — one record, four roles', mx, top + 24);
+    x.strokeStyle = LINE; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(mx, top + 38.5); x.lineTo(mx + mw, top + 38.5); x.stroke();
+
+    const rowH = 44;
+    const rows = Math.max(1, Math.floor((bot - top - 56) / rowH));
+    for(let i = 0; i < rows; i++){
+      const ry = top + 60 + i * rowH;
+      x.fillStyle = SOFT; rr(mx, ry, 38, 8, 4); x.fill();
+      x.fillStyle = BAR;  rr(mx + 56, ry, mw * (.22 + rnd() * .30), 8, 4); x.fill();
+
+      if(mw > 300){
+        const px = mx + mw - 178;
+        if(i % 3 === 1){ x.fillStyle = IRIS; rr(px, ry - 5, 76, 18, 9); x.fill(); }
+        else { x.strokeStyle = LINE; rr(px + .5, ry - 4.5, 76, 18, 9); x.stroke(); }
+        x.fillStyle = SOFT; rr(mx + mw - 84, ry, 56 + rnd() * 22, 8, 4); x.fill();
+      }
+      x.strokeStyle = 'rgba(255,255,255,.09)';
+      x.beginPath(); x.moveTo(mx, ry + 25.5); x.lineTo(mx + mw, ry + 25.5); x.stroke();
+    }
+    return c;
+  }
+
+  /* assets/background1.jpg - the layer the cursor uncovers. Until it has
+     loaded (or if it fails) the procedural schematic below stands in, so the
+     effect is never blank. */
+  let revealImg = null, portraitImg = null;
+  const plateEl = hero.querySelector('.hero-portrait .plate');
+  function loadInto(src, set){
+    const im = new Image();
+    im.decoding = 'async';
+    im.onload = () => { set(im); if(velocity) refreshReveal(); };
+    im.src = src;
+  }
+  loadInto('assets/background1.jpg',      im => revealImg   = im);
+  loadInto('assets/Profile_picture.png',  im => portraitImg = im);
+
+  const revealTex = gl.createTexture();
+  function uploadReveal(src){
+    gl.bindTexture(gl.TEXTURE_2D, revealTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
+  /* ---------- targets ---------- */
+  let velocity, dye, divergence, curl, pressure, aspect = 1;
+
+  function resolution(base){
+    const a = cv.width / cv.height;
+    return a > 1 ? { w:Math.round(base * a), h:base } : { w:base, h:Math.round(base / a) };
+  }
+
+  function build(){
+    const rect = hero.getBoundingClientRect();
+    const dpr  = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.round(rect.width  * dpr));
+    const h = Math.max(1, Math.round(rect.height * dpr));
+    if(cv.width === w && cv.height === h && velocity) return;
+
+    cv.width = w; cv.height = h;
+    aspect = w / h;
+
+    [velocity, dye, divergence, curl, pressure].forEach(t => t && t.dispose());
+    const s = resolution(SIM_RES), d = resolution(DYE_RES);
+    velocity   = makeDouble(s.w, s.h);
+    pressure   = makeDouble(s.w, s.h);
+    dye        = makeDouble(d.w, d.h);
+    divergence = makeFbo(s.w, s.h);
+    curl       = makeFbo(s.w, s.h);
+
+    refreshReveal(rect);
+  }
+
+  function refreshReveal(rect){
+    const r = rect || hero.getBoundingClientRect();
+    uploadReveal(paintReveal(r.width, r.height));
+  }
+
+  /* cover-fit the photograph into a hero-sized canvas. This is also where the
+     4928px original stops being a 64MB texture: the upload is capped at 2048. */
+  function paintReveal(w, h){
+    if(!revealImg) return paintSchematic(w, h);
+    const scale = Math.min(Math.min(devicePixelRatio || 1, 2), 2048 / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width  = Math.max(2, Math.round(w * scale));
+    c.height = Math.max(2, Math.round(h * scale));
+    const x = c.getContext('2d');
+
+    const ir = revealImg.width / revealImg.height, cr = c.width / c.height;
+    let dw, dh;
+    if(ir > cr){ dh = c.height; dw = dh * ir; } else { dw = c.width; dh = dw / ir; }
+    x.drawImage(revealImg, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
+
+    x.fillStyle = 'rgba(10,11,15,' + REVEAL_DIM + ')';
+    x.fillRect(0, 0, c.width, c.height);
+
+    /* The colour portrait goes in after the dim, at the exact rectangle the grey
+       plate occupies, so the two register pixel for pixel and the wipe reads as
+       colour bleeding into greyscale rather than as a second image. Nothing in
+       the hero sits over this rectangle, so the bright area costs no legibility. */
+    if(portraitImg && plateEl){
+      const hr = hero.getBoundingClientRect(), pr = plateEl.getBoundingClientRect();
+      x.drawImage(portraitImg,
+        (pr.left - hr.left) * scale, (pr.top - hr.top) * scale,
+        pr.width * scale, pr.height * scale);
+    }
+    return c;
+  }
+
+  /* ---------- passes ---------- */
+  const use = k => { gl.useProgram(programs[k].p); return programs[k].u; };
+
+  function splat(nx, ny, dx, dy, amount){
+    let u = use('splat');
+    gl.uniform1i(u.uTarget, velocity.read.bind(0));
+    gl.uniform2f(u.uTexel, velocity.texel[0], velocity.texel[1]);
+    gl.uniform1f(u.uAspect, aspect);
+    gl.uniform2f(u.uPoint, nx, ny);
+    gl.uniform3f(u.uColor, dx, dy, 0);
+    gl.uniform1f(u.uRadius, RADIUS / 100);
+    draw(velocity.write); velocity.swap();
+
+    u = use('splat');
+    gl.uniform1i(u.uTarget, dye.read.bind(0));
+    gl.uniform2f(u.uTexel, dye.texel[0], dye.texel[1]);
+    gl.uniform1f(u.uAspect, aspect);
+    gl.uniform2f(u.uPoint, nx, ny);
+    gl.uniform3f(u.uColor, amount, amount, amount);
+    gl.uniform1f(u.uRadius, RADIUS / 100);
+    draw(dye.write); dye.swap();
+  }
+
+  function step(dt){
+    let u = use('curl');
+    gl.uniform2f(u.uTexel, velocity.texel[0], velocity.texel[1]);
+    gl.uniform1i(u.uVelocity, velocity.read.bind(0));
+    draw(curl);
+
+    u = use('vorticity');
+    gl.uniform2f(u.uTexel, velocity.texel[0], velocity.texel[1]);
+    gl.uniform1i(u.uVelocity, velocity.read.bind(0));
+    gl.uniform1i(u.uCurl, curl.bind(1));
+    gl.uniform1f(u.uCurlStr, CURL);
+    gl.uniform1f(u.uDt, dt);
+    draw(velocity.write); velocity.swap();
+
+    u = use('divergence');
+    gl.uniform2f(u.uTexel, velocity.texel[0], velocity.texel[1]);
+    gl.uniform1i(u.uVelocity, velocity.read.bind(0));
+    draw(divergence);
+
+    u = use('clear');
+    gl.uniform2f(u.uTexel, pressure.texel[0], pressure.texel[1]);
+    gl.uniform1i(u.uTexture, pressure.read.bind(0));
+    gl.uniform1f(u.uValue, PRESSURE);
+    draw(pressure.write); pressure.swap();
+
+    u = use('pressure');
+    gl.uniform2f(u.uTexel, velocity.texel[0], velocity.texel[1]);
+    gl.uniform1i(u.uDivergence, divergence.bind(0));
+    for(let i = 0; i < ITER; i++){
+      gl.uniform1i(u.uPressure, pressure.read.bind(1));
+      draw(pressure.write); pressure.swap();
+    }
+
+    u = use('gradient');
+    gl.uniform2f(u.uTexel, velocity.texel[0], velocity.texel[1]);
+    gl.uniform1i(u.uPressure, pressure.read.bind(0));
+    gl.uniform1i(u.uVelocity, velocity.read.bind(1));
+    draw(velocity.write); velocity.swap();
+
+    u = use('advect');
+    gl.uniform2f(u.uTexel, velocity.texel[0], velocity.texel[1]);
+    gl.uniform1i(u.uVelocity, velocity.read.bind(0));
+    gl.uniform1i(u.uSource,   velocity.read.bind(0));
+    gl.uniform1f(u.uDt, dt);
+    gl.uniform1f(u.uDiss, VEL_DISS);
+    draw(velocity.write); velocity.swap();
+
+    u = use('advect');
+    gl.uniform2f(u.uTexel, dye.texel[0], dye.texel[1]);
+    gl.uniform1i(u.uVelocity, velocity.read.bind(0));
+    gl.uniform1i(u.uSource,   dye.read.bind(1));
+    gl.uniform1f(u.uDt, dt);
+    gl.uniform1f(u.uDiss, DYE_DISS);
+    draw(dye.write); dye.swap();
+  }
+
+  function render(){
+    const u = use('composite');
+    gl.uniform2f(u.uTexel, 0, 0);
+    gl.uniform1i(u.uDye, dye.read.bind(0));
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, revealTex);
+    gl.uniform1i(u.uReveal, 1);
+    gl.uniform3f(u.uInk, INK[0], INK[1], INK[2]);
+    draw(null);
+  }
+
+  /* ---------- input ---------- */
+  let last = null;
+  hero.addEventListener('pointermove', e => {
+    const r = hero.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width;
+    const ny = 1 - (e.clientY - r.top) / r.height;
+    if(nx < 0 || nx > 1 || ny < 0 || ny > 1){ last = null; return; }
+    if(last){
+      const dx = (nx - last.x) * FORCE * aspect;
+      const dy = (ny - last.y) * FORCE;
+      const speed = Math.hypot(nx - last.x, ny - last.y);
+      splat(nx, ny, dx, dy, Math.min(0.30 + speed * 20, 0.95));
+    }
+    last = { x:nx, y:ny };
+    if(hint) hint.classList.add('is-gone');
+  }, { passive:true });
+  hero.addEventListener('pointerleave', () => { last = null; }, { passive:true });
+
+  /* one scripted sweep on load, so the effect announces itself */
+  function intro(){
+    const t0 = performance.now(), dur = 1500 / SPEED;   /* the intro keeps pace with the sim */
+    let prev = null;
+    (function sweep(now){
+      const k = Math.min((now - t0) / dur, 1);
+      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const nx = 0.14 + e * 0.62;
+      const ny = 0.62 - Math.sin(e * Math.PI) * 0.20;
+      if(prev) splat(nx, ny, (nx - prev.x) * FORCE * aspect * .8, (ny - prev.y) * FORCE * .8, 0.55);
+      prev = { x:nx, y:ny };
+      if(k < 1) requestAnimationFrame(sweep);
+    })(t0);
+  }
+
+  /* ---------- loop ---------- */
+  let visible = true, raf = 0, tPrev = performance.now();
+
+  function frame(now){
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min((now - tPrev) / 1000, 1 / 30) * SPEED;
+    tPrev = now;
+    if(!visible || document.hidden) return;
+    step(dt);
+    render();
+  }
+
+  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; }, { threshold:0 }).observe(hero);
+
+  let resizeTimer;
+  new ResizeObserver(() => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(build, 180);
+  }).observe(hero);
+
+  build();
+  cv.classList.add('is-live');
+  raf = requestAnimationFrame(frame);
+  setTimeout(intro, 700);
+  setTimeout(() => { if(hint) hint.classList.add('is-gone'); }, 9000);
+
+  gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); cancelAnimationFrame(raf); bail(); });
+})();
+</script>
