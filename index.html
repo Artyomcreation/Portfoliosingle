@@ -251,12 +251,13 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
    itself would drive it straight under the project names. .hero-preview already
    clips, so the zoom stays in its box. */
 .hero-shot{position:absolute;inset:0;background:center/cover no-repeat;
-  opacity:0;transform:scale(1);
+  opacity:0;transform:scale(1);pointer-events:none;
   transition:opacity .42s var(--ease),transform .55s var(--ease);}
-.hero-shot.is-on{opacity:1;}
-/* The zoom belongs to the project names only. The plate itself is not a
-   control - it reports what is hovered, it does not respond to being pointed
-   at - so hovering it does nothing. .is-zoom is set by the name handler. */
+.hero-shot.is-on{opacity:1;pointer-events:auto;cursor:pointer;}
+/* The zoom belongs to the project names only - hovering the plate itself
+   does nothing, .is-zoom is set by the name handler. The plate is still a
+   click target though: only the visible one (.is-on) accepts pointer events,
+   so a click always opens the case that is currently shown. */
 .hero-preview.is-zoom .hero-shot{transform:scale(1.2);}
 
 /* ---- work list ---- */
@@ -733,11 +734,11 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
     <!-- preview plates. Each shows assets/work/<slug>.webp once the file exists;
          until then the surface colour shows through, no broken-image icon. -->
     <div class="hero-preview" id="heroPreview">
-      <div class="hero-shot" data-slug="parfee" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="fiducia" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="textyourtenant" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="dbmc" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="travellite" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="parfee" data-case="parfee" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="fiducia" data-case="fiducia" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="textyourtenant" data-case="textyourtenant" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="dbmc" data-case="dbmc" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="travellite" data-case="travellite" style="background-image:url('assets/Project_preview.png')"></div>
     </div>
 
     <ul class="hero-work" id="heroWork">
