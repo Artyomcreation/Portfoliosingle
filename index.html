@@ -103,6 +103,7 @@ body{
   letter-spacing:var(--track);
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
+  overscroll-behavior-x:none;
 }
 body.is-locked{overflow:hidden;}
 h1,h2,h3,h4,p,figure,blockquote,dl,dd{margin:0;}
@@ -671,7 +672,7 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
    the arrows' translateY(-50%) - into its 3D scene and skews its position.
    Keeping them outside the perspective container sidesteps that entirely. */
 .cf-stage{position:relative;}
-.cf-frame{cursor:grab;overflow:hidden;
+.cf-frame{cursor:grab;overflow:hidden;overscroll-behavior-x:contain;
   padding-block:clamp(6px,3cqh,var(--s54));outline:none;touch-action:pan-y;
   perspective:calc(var(--cf-w) * 3);
   /* The frame's own overflow:hidden clips the outermost cards with a hard
@@ -1503,6 +1504,27 @@ function initCoverflow(container, items){
   }
   frame.addEventListener('pointerup', endDrag);
   frame.addEventListener('pointercancel', endDrag);
+
+  /* Touchpad horizontal swipe (two-finger scroll) drives the same pos/target
+     as a pointer drag, live per wheel tick - no click-and-hold needed. Only
+     claims the gesture when it reads as horizontal, so an ordinary vertical
+     scroll on the page still passes through untouched. */
+  let wheelActive = false, wheelTimer = null;
+  frame.addEventListener('wheel', e => {
+    if(Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    const pitch = width * (1 + GAP);
+    if(!pitch) return;
+    e.preventDefault();
+    if(raf !== null){ cancelAnimationFrame(raf); raf = null; }
+    if(!wheelActive){ wheelActive = true; pos = target; }
+    pos += e.deltaX / pitch;
+    target = pos;
+    const i = indexAt(pos);
+    if(i !== selected){ selected = i; renderCaption(); }
+    paint();
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => { wheelActive = false; settle(Math.round(pos)); }, 120);
+  }, { passive: false });
 
   frame.addEventListener('keydown', e => {
     if(e.key === 'ArrowLeft'){ e.preventDefault(); nudge(-1); }
