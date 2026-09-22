@@ -2156,10 +2156,13 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   }
 
   /* cover-fit the photograph into a hero-sized canvas. This is also where the
-     4928px original stops being a 64MB texture: the upload is capped at 2048. */
+     4928px original stops being an oversized texture: the upload is capped at
+     3072 on the long edge, so wide hi-DPI heroes (4K desktops) still get the
+     full devicePixelRatio instead of being squeezed by a limit sized for
+     laptop viewports. */
   function paintReveal(w, h){
     if(!revealImg) return paintSchematic(w, h);
-    const scale = Math.min(Math.min(devicePixelRatio || 1, 2), 2048 / Math.max(w, h));
+    const scale = Math.min(Math.min(devicePixelRatio || 1, 2), 3072 / Math.max(w, h));
     const c = document.createElement('canvas');
     c.width  = Math.max(2, Math.round(w * scale));
     c.height = Math.max(2, Math.round(h * scale));
