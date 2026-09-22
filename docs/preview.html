@@ -120,6 +120,12 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
 .h{font-size:clamp(34px,5.4vw,60px);line-height:1.07;}
 .h-lg{font-size:clamp(44px,7.6vw,88px);line-height:1.06;}
 
+/* Headlines track in, everything else tracks out (body's --track is +.05em).
+   Covers every heading tag plus the .h/.h-sm/.h-lg utility classes; the hero
+   title and panel/drawer headings already carried this value individually
+   and stay unchanged. */
+h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
+
 /* placeholder marker — copy Artjoms still has to write */
 .tbd{color:var(--faint);border-bottom:1px dashed var(--faint);cursor:help;}
 
@@ -201,7 +207,7 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
 /* ---- top row ---- */
 .hero-place{grid-column:2;grid-row:1;font-size:var(--t-hero-meta);}
 .hero-clock{grid-column:3;grid-row:1;font-size:var(--t-hero-meta);font-variant-numeric:tabular-nums;}
-.hero-nav{grid-column:4;grid-row:1;justify-self:end;
+.hero-nav{grid-column:3 / 5;grid-row:1;justify-self:end;
   display:flex;flex-wrap:wrap;gap:clamp(10px,.94vw,18px);font-size:var(--t-hero-meta);}
 .hero-nav a{transition:opacity .2s var(--ease);}
 .hero-nav a:hover{opacity:.55;}
@@ -237,12 +243,13 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
    itself would drive it straight under the project names. .hero-preview already
    clips, so the zoom stays in its box. */
 .hero-shot{position:absolute;inset:0;background:center/cover no-repeat;
-  opacity:0;transform:scale(1);
+  opacity:0;transform:scale(1);pointer-events:none;
   transition:opacity .42s var(--ease),transform .55s var(--ease);}
-.hero-shot.is-on{opacity:1;}
-/* The zoom belongs to the project names only. The plate itself is not a
-   control - it reports what is hovered, it does not respond to being pointed
-   at - so hovering it does nothing. .is-zoom is set by the name handler. */
+.hero-shot.is-on{opacity:1;pointer-events:auto;cursor:pointer;}
+/* The zoom belongs to the project names only - hovering the plate itself
+   does nothing, .is-zoom is set by the name handler. The plate is still a
+   click target though: only the visible one (.is-on) accepts pointer events,
+   so a click always opens the case that is currently shown. */
 .hero-preview.is-zoom .hero-shot{transform:scale(1.2);}
 
 /* ---- work list ---- */
@@ -393,7 +400,7 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
 /* ============================================================
    CASE PANEL
    ============================================================ */
-.panel-root{position:fixed;inset:0;z-index:90;pointer-events:none;overflow:clip;}
+.panel-root{position:fixed;inset:0;z-index:96;pointer-events:none;overflow:clip;}
 .panel-root.open{pointer-events:auto;}
 /* The two are sequenced, not simultaneous. A transition uses the delay from
    the style it is moving TO, so putting the delays on the open/closed states
@@ -401,7 +408,7 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
      opening - scrim covers the page, then the drawer comes in
      closing - the drawer leaves, then the scrim lifts */
 .scrim{position:absolute;inset:0;background:rgba(28,29,32,.55);opacity:0;
-  transition:opacity var(--t-scrim) var(--ease-modal) var(--t-drawer);}
+  transition:opacity var(--t-scrim) var(--ease-modal) calc(var(--t-drawer) * 0.5);}
 .panel-root.open .scrim{opacity:1;transition-delay:0s;}
 
 /* The panel IS the visible surface, so the instant its transition starts it is
@@ -420,7 +427,7 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
    speed it did when it swept the full width. That is the trade for having it
    appear the moment it starts. */
 @media (min-width:900px){ .panel{width:50%;} }
-.panel-root.open .panel{transform:translateX(0);transition-delay:var(--t-scrim);}
+.panel-root.open .panel{transform:translateX(0);transition-delay:calc(var(--t-scrim) * 0.5);}
 
 .panel-body{pointer-events:auto;}   /* only the surface itself is clickable */
 
@@ -465,11 +472,11 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
 .panel-hero{
   position:relative;margin-top:calc(-1 * var(--bar-h));
   clip-path:inset(0 0 100% 0);
-  transition:clip-path 0s var(--ease-modal) var(--t-drawer);
+  transition:clip-path 0s var(--ease-modal) calc(var(--t-drawer) * 0.5);
 }
 .panel-root.open .panel-hero{
   clip-path:inset(0 0 0 0);
-  transition:clip-path var(--t-drawer) var(--ease-modal) var(--t-scrim);
+  transition:clip-path var(--t-drawer) var(--ease-modal) calc(var(--t-scrim) * 0.5);
 }
 .panel-hero-img{aspect-ratio:12 / 5;background:center/cover no-repeat;}
 .panel-hero h2{position:absolute;left:var(--panel-pad);bottom:clamp(14px,3.4%,34px);margin:0;
@@ -535,6 +542,166 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
   padding-top:var(--s22);border-top:1px solid var(--hair-soft);}
 
 /* ============================================================
+   ABOUT PAGE
+   Opened from the "About" link in the hero nav. Same choreography
+   as the case panel above - scrim fades, then the panel slides -
+   sharing --t-drawer/--t-scrim/--ease-modal so the two feel like
+   one system: same duration, same curve, locked to those two
+   variables rather than a value of its own. The difference is the
+   axis - this rises from the bottom, not the side, and always
+   takes the full viewport rather than stopping at 50%.
+   ============================================================ */
+.about-root{position:fixed;inset:0;z-index:95;pointer-events:none;overflow:clip;}
+.about-root.open{pointer-events:auto;}
+.about-root.open .scrim{opacity:1;transition-delay:0s;}
+
+.about-panel{position:absolute;inset:0;pointer-events:none;
+  transform:translateY(100%);
+  transition:transform var(--t-drawer) var(--ease-modal) 0s;}
+.about-root.open .about-panel{transform:translateY(0);transition-delay:calc(var(--t-scrim) * 0.5);}
+
+.about-body{pointer-events:auto;height:100%;overflow-y:auto;background:var(--canvas);overscroll-behavior:contain;}
+
+.about-topbar{position:sticky;top:0;z-index:2;background:var(--canvas);
+  display:flex;align-items:center;justify-content:space-between;gap:var(--s22);flex-wrap:wrap;
+  padding-block:var(--s22);border-bottom:1px solid var(--hair-soft);}
+.back-btn{display:inline-flex;align-items:center;gap:var(--s8);font-size:var(--t-meta);
+  transition:opacity .2s var(--ease);}
+.back-btn:hover{opacity:.6;}
+.back-btn img{display:block;width:24px;height:24px;}
+.about-nav{display:flex;flex-wrap:wrap;gap:clamp(10px,.94vw,18px);font-size:var(--t-hero-meta-sm);}
+.about-nav a{transition:opacity .2s var(--ease);}
+.about-nav a:hover{opacity:.6;}
+.about-nav [aria-current]{font-weight:700;}
+
+/* Same left/right anchor as the hero grid above: its two halves sum to
+   348+638=986 and 451+363=814, a 54.8/45.2 split. Reusing those numbers
+   keeps the page and the About overlay divided at the same vertical line. */
+.about-hero{display:grid;grid-template-columns:1fr;gap:var(--s43);padding-block:var(--s63) 0;}
+@media (min-width:940px){ .about-hero{grid-template-columns:minmax(0,986fr) minmax(0,814fr);align-items:stretch;} }
+.about-hero-left{display:flex;flex-direction:column;justify-content:space-between;gap:var(--s43);}
+.about-intro{display:flex;flex-direction:column;gap:var(--s22);max-width:660px;}
+.about-portrait{border-radius:var(--r-card);background:var(--surface) center/cover no-repeat;
+  aspect-ratio:1624 / 860;align-self:start;}
+
+.about-rule{border-top:1px solid var(--hair-soft);margin-top:var(--s63);}
+
+.about-lower{display:grid;grid-template-columns:1fr;gap:var(--s43);padding-block:var(--s54) var(--s63);}
+@media (min-width:940px){ .about-lower{grid-template-columns:minmax(0,986fr) minmax(0,814fr);} }
+
+.about-tools-label{color:var(--fog);}
+.about-tools-body{margin-top:var(--s10);max-width:38ch;}
+.about-contact{margin-top:var(--s115);}
+.about-contact-label{font-size:var(--t-h-sm);}
+.social-row{display:flex;gap:var(--s10);margin-top:var(--s17);}
+.social-icon{width:32px;height:32px;border-radius:50%;overflow:hidden;display:block;
+  transition:transform .2s var(--ease);}
+.social-icon:hover{transform:translateY(-2px);}
+.social-icon img{width:100%;height:100%;display:block;object-fit:cover;}
+
+/* Arrows sit inline with the headline, not stacked above it - same
+   vertical center, a fixed 20px away from the text, per reference. */
+.testimonial-head{display:flex;align-items:center;gap:20px;}
+.testimonial-nav{display:flex;gap:var(--s10);flex:none;}
+.circle-btn{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--surface-hi);color:var(--ink);transition:background .2s var(--ease),color .2s var(--ease);}
+.circle-btn:hover{background:var(--ink);color:var(--canvas);}
+.about-testimonial h2{font-size:var(--t-h-sm);line-height:1.2;}
+.testimonial-text{margin-top:var(--s22);font-size:var(--t-body-lg);color:var(--fog);line-height:1.5;
+  max-width:660px;transition:opacity .3s var(--ease-modal);}
+.testimonial-text.is-fade{opacity:0;transition:none;}
+.testimonial-by{display:flex;align-items:center;gap:var(--s12);margin-top:var(--s22);}
+.testimonial-by img{width:40px;height:40px;border-radius:50%;display:block;}
+.testimonial-by .b{font-weight:700;}
+
+/* ============================================================
+   ALL WORK PAGE
+   Same rise-from-bottom choreography as the About overlay above,
+   and it shares .about-topbar/.about-nav/.back-btn wholesale
+   rather than forking them - none of those rules are About-
+   specific, just "the bar at the top of a full-page overlay".
+   ============================================================ */
+.work-root{position:fixed;inset:0;z-index:95;pointer-events:none;overflow:clip;}
+.work-root.open{pointer-events:auto;}
+.work-root.open .scrim{opacity:1;transition-delay:0s;}
+
+.work-panel{position:absolute;inset:0;pointer-events:none;
+  transform:translateY(100%);
+  transition:transform var(--t-drawer) var(--ease-modal) 0s;}
+.work-root.open .work-panel{transform:translateY(0);transition-delay:calc(var(--t-scrim) * 0.5);}
+
+.work-body{pointer-events:auto;height:100%;overflow:hidden;background:var(--canvas);
+  display:flex;flex-direction:column;}
+.work-body .about-topbar{flex:none;}
+
+/* container-type:size makes .work-fit measurable in cqh/cqw - its
+   height is set by flex (100% of work-body minus the topbar, whatever
+   that topbar ends up being - it wraps to two rows under 940px), so
+   sizing children off cqh (not vh) means they always add up to less
+   than the space actually left over, on any device, instead of each
+   independently guessing a share of the whole viewport. */
+.work-fit{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;
+  min-height:0;overflow:hidden;container-type:size;container-name:workfit;}
+
+.work-hero{padding:0;max-width:660px;margin-bottom:clamp(6px,3cqh,24px);}
+.work-hero .h-lg{font-size:clamp(22px,min(4.6vw,9cqh),56px);}
+
+/* ============================================================
+   COVERFLOW CAROUSEL
+   Ported from a React/shadcn reference component to plain JS -
+   same math (rAF ease-out settle, distance-based tilt/depth/fade,
+   pointer drag with a flick carry), no framework underneath.
+   Every size below is a fraction of .work-fit's own height (cqh),
+   not the viewport's - the whole stack (card, arrows, caption, dots)
+   is budgeted to add up to well under 100cqh, so it always fits one
+   screen with no page scroll, on short/landscape viewports too.
+   ============================================================ */
+.cf{--cf-card:clamp(96px,min(26vw,38cqh),320px);width:100%;
+  padding-block:clamp(8px,4cqh,var(--s115)) clamp(6px,2.5cqh,var(--s63));}
+/* The arrows live in .cf-stage, one level above .cf-frame, on purpose: a
+   perspective parent pulls any transformed child - even a plain 2D one like
+   the arrows' translateY(-50%) - into its 3D scene and skews its position.
+   Keeping them outside the perspective container sidesteps that entirely. */
+.cf-stage{position:relative;}
+.cf-frame{cursor:grab;overflow:hidden;
+  padding-block:clamp(6px,3cqh,var(--s54));outline:none;touch-action:pan-y;
+  perspective:calc(var(--cf-card) * 3);
+  /* The frame's own overflow:hidden clips the outermost cards with a hard
+     edge - mask them out instead, so they dissolve into the page rather
+     than getting cut off mid-card. */
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 14%,#000 86%,transparent 100%);
+  mask-image:linear-gradient(to right,transparent 0,#000 14%,#000 86%,transparent 100%);}
+.cf-frame:active{cursor:grabbing;}
+.cf-frame:focus-visible{box-shadow:var(--ring);border-radius:var(--r-card);}
+.cf-track{position:relative;height:var(--cf-card);transform-style:preserve-3d;}
+.cf-card{position:absolute;left:50%;top:0;aspect-ratio:1/1;width:var(--cf-card);
+  border-radius:var(--r-card);overflow:hidden;background:var(--surface);
+  box-shadow:0 25px 50px rgba(20,20,22,.22);will-change:transform;cursor:pointer;}
+.cf-cover{width:100%;height:100%;background:var(--surface) center/cover no-repeat;}
+
+.cf-arrow{position:absolute;top:50%;z-index:200;transform:translateY(-50%);
+  display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:50%;background:var(--surface);color:var(--ink);
+  transition:background .2s var(--ease);}
+.cf-arrow:hover{background:var(--surface-hi);}
+.cf-arrow-prev{left:0;}
+.cf-arrow-next{right:0;}
+
+.cf-caption{margin-top:clamp(6px,3cqh,var(--s43));display:flex;flex-direction:column;align-items:center;
+  text-align:center;gap:var(--s8);transition:opacity .2s var(--ease);}
+.cf-title{font-size:clamp(16px,6cqh,var(--t-h-sm));line-height:1.2;}
+.cf-subtitle{font-size:var(--t-meta);color:var(--fog);max-width:46ch;}
+
+.cf-dots{display:flex;align-items:center;justify-content:center;gap:var(--s10);margin-top:clamp(6px,2.5cqh,var(--s43));}
+.cf-dot{width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:.28;
+  transition:opacity .2s var(--ease),transform .2s var(--ease);}
+.cf-dot.is-active{opacity:1;transform:scale(1.3);}
+
+@media (max-width:600px){
+  .cf-arrow{width:36px;height:36px;}
+}
+
+/* ============================================================
    MOTION PREFERENCES
    ============================================================ */
 @media (prefers-reduced-motion:reduce){
@@ -561,7 +728,7 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
     <p class="hero-clock inv" id="clock">--:--:--</p>
 
     <nav class="hero-nav" aria-label="Primary">
-      <a class="inv" href="#work">All work</a>
+      <a class="inv" href="#/work">All work</a>
       <a class="inv" href="#about">About</a>
       <a class="inv" href="#contact">Contact</a>
       <a class="inv" href="#" download>Download CV</a>
@@ -570,11 +737,11 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
     <!-- preview plates. Each shows assets/work/<slug>.webp once the file exists;
          until then the surface colour shows through, no broken-image icon. -->
     <div class="hero-preview" id="heroPreview">
-      <div class="hero-shot" data-slug="parfee" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="fiducia" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="textyourtenant" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="dbmc" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="travellite" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="parfee" data-case="parfee" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="fiducia" data-case="fiducia" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="textyourtenant" data-case="textyourtenant" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="dbmc" data-case="dbmc" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="travellite" data-case="travellite" style="background-image:url('assets/Project_preview.png')"></div>
     </div>
 
     <ul class="hero-work" id="heroWork">
@@ -597,141 +764,6 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
   </div>
 </header>
 
-<main>
-
-
-  <!-- ============================ PROOF ============================ -->
-  <section class="pad" aria-label="At a glance">
-    <div class="proof">
-      <div class="proof-cell">
-        <div class="k">4 years</div>
-        <div class="v">Designing products end to end, research through handoff</div>
-      </div>
-      <div class="proof-cell">
-        <div class="k">100% JSS</div>
-        <div class="v">Top Rated on <a href="#">Upwork</a> across three years — verified client reviews</div>
-      </div>
-      <div class="proof-cell">
-        <div class="k">4 domains</div>
-        <div class="v">SaaS · Admin systems · Mobile · E-commerce</div>
-      </div>
-      <div class="proof-cell">
-        <div class="k">EN / LV / RU</div>
-        <div class="v">Proficient, native, native — plus basic German</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================ QUOTES ============================ -->
-  <section class="pad" aria-label="Client feedback">
-    <div class="sec-head">
-      <h2 class="h-sm">What clients said</h2>
-      <p class="meta col" style="max-width:42ch">Verbatim from Upwork, where a review is tied to a completed contract and can't be edited afterwards.</p>
-    </div>
-    <div class="quotes" id="quotes"></div>
-  </section>
-
-  <!-- ============================ HOW I WORK ============================ -->
-  <section class="sec pad" id="how">
-    <div class="cols">
-      <div class="sec-lead">
-        <h2 class="h">Independent, but not alone.</h2>
-        <p class="meta">Most of my work has been freelance. That usually raises one question, so here is the direct answer to it.</p>
-      </div>
-      <div class="points">
-        <div class="point">
-          <h3>I work inside a team, not beside one</h3>
-          <p>Part-time at Brandsite since April 2026, designing e-commerce and corporate sites with a product
-             manager and iterating on their feedback. On Parfee, Fiducia, Xdose and Smartinterior I worked
-             alongside PMs — and on Fiducia directly with the development team.</p>
-        </div>
-        <div class="point">
-          <h3>I write the brief when there isn't one</h3>
-          <p>Clients arrive without specs. I run competitor and audience research, and build CJMs, user stories,
-             JTBD and information architecture before any interface exists.</p>
-        </div>
-        <div class="point">
-          <h3>I hand off systems, not screenshots</h3>
-          <p>Tokens, variables, states and variants, structured for engineering. The TextYourTenant team said
-             the system was easy for their engineers to implement — that is the outcome I design handoff for.</p>
-        </div>
-        <div class="point">
-          <h3>I design the whole state, not the happy path</h3>
-          <p>Empty, loading, partial, failed, and every combination a role can actually encounter. On multi-role
-             products this is most of the work.</p>
-        </div>
-        <div class="tagrow">
-          <span class="tag">Figma</span>
-          <span class="tag">Prototyping</span>
-          <span class="tag">Design tokens</span>
-          <span class="tag">Design systems</span>
-          <span class="tag">CJM · JTBD · IA</span>
-          <span class="tag">Competitor research</span>
-          <span class="tag">Engineering handoff</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================ MORE WORK ============================ -->
-  <section class="pad" id="work">
-    <div class="sec-head">
-      <h2 class="h-sm">More work</h2>
-      <p class="meta">Shorter engagements, still shipped.</p>
-    </div>
-    <div class="grid3" id="supporting"></div>
-  </section>
-
-  <!-- ============================ ABOUT ============================ -->
-  <section class="sec pad" id="about">
-    <div class="cols">
-      <div class="sec-lead">
-        <h2 class="h">A physiotherapist who kept asking why the system was broken.</h2>
-      </div>
-      <div>
-        <p class="body-lg">
-          I trained as a physiotherapist and spent my degree learning one loop: assess a person, form a
-          hypothesis, test it, adjust. That is the same loop I run on products now — which is why I reach
-          for structure before I reach for a screen.
-        </p>
-        <p class="body-lg" style="margin-top:var(--s22)">
-          Since 2022 I've designed products for founders and product managers across Europe and the US,
-          mostly the operational side: admin systems, dashboards, and the state logic underneath them.
-          <span class="tbd" title="Artjoms to write">I'm now looking for an in-house product team where I can stay with one product long enough to see what my decisions actually did.</span>
-        </p>
-        <div class="tagrow">
-          <span class="tag">Uprock — Mobile App Design, 2024</span>
-          <span class="tag">WAYUP — UX/UI Design, 2021</span>
-          <span class="tag">BSc Physiotherapy — LASE, 2018</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================ CONTACT ============================ -->
-  <section class="sec pad" id="contact">
-    <h2 class="h-lg col" style="max-width:15ch">Let's work together</h2>
-    <div class="contact-actions">
-      <a class="pill pill-iris" href="mailto:Artjoms.Suslovs@gmail.com">Artjoms.Suslovs@gmail.com</a>
-      <a class="pill" href="#" download>Download CV</a>
-    </div>
-    <div class="links">
-      <a class="pill pill-sm" href="https://www.linkedin.com/in/artjoms-suslovs-390536175" target="_blank" rel="noopener">LinkedIn</a>
-      <a class="pill pill-sm" href="#" target="_blank" rel="noopener">Behance</a>
-      <a class="pill pill-sm" href="#" target="_blank" rel="noopener">Upwork</a>
-      <a class="pill pill-sm" href="tel:+37128274160">+371 28274160</a>
-    </div>
-  </section>
-
-  <div class="pad">
-    <div class="foot hair">
-      <span>© 2026 Artjoms Suslovs</span>
-      <span>Riga, Latvia</span>
-    </div>
-  </div>
-
-</main>
-
 <!-- ============================ CASE PANEL ============================ -->
 <div class="panel-root" id="panelRoot" role="dialog" aria-modal="true" aria-labelledby="panelTitle" aria-hidden="true">
   <div class="scrim" id="scrim"></div>
@@ -742,6 +774,113 @@ strong,b{font-weight:var(--w);color:var(--ink);}   /* single-weight system: emph
         <button class="pill pill-sm pill-solid" id="panelClose">Close</button>
       </div>
       <div class="panel-in" id="panelIn"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ ABOUT PAGE ============================ -->
+<div class="about-root" id="aboutRoot" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" aria-hidden="true">
+  <div class="scrim" id="aboutScrim"></div>
+  <div class="about-panel">
+    <div class="about-body" id="aboutBody" tabindex="-1">
+
+      <div class="about-topbar pad">
+        <button class="back-btn" id="aboutBack" type="button">
+          <img src="assets/material-symbols-light_arrow-circle-left.svg" alt="" width="24" height="24">
+          <span>Back</span>
+        </button>
+        <nav class="about-nav" aria-label="About page">
+          <a class="about-exit" href="#/work">All work</a>
+          <span aria-current="page">About</span>
+          <a class="about-exit" href="#contact">Contact</a>
+          <a href="#" download>Download CV</a>
+        </nav>
+      </div>
+
+      <div class="pad">
+        <div class="about-hero">
+          <div class="about-hero-left">
+            <h1 class="h-lg" id="aboutTitle">About</h1>
+            <div class="about-intro">
+              <p class="body-lg">UX/UI designer based in Riga, Latvia. Top Rated on Upwork with a 100% Job Success Score over three years of freelance work, plus a part-time role at Web agency.</p>
+              <p class="body-lg">Design SaaS dashboards, mobile apps, admin panels, and e-commerce sites for clients across Europe and the US, taking projects from research through UI, design system, and developer handoff.</p>
+            </div>
+          </div>
+          <div class="about-portrait" style="background-image:url('assets/About_right_image.png')" role="img" aria-label="Artjoms Suslovs — Artjoms.Suslovs@gmail.com, +371 28274160"></div>
+        </div>
+
+        <div class="about-rule"></div>
+
+        <div class="about-lower">
+          <div class="about-tools">
+            <p class="caption about-tools-label">Tools</p>
+            <p class="about-tools-body">Figma, AI-Assisted Prototyping, AI-Generated Visual Assets, Motion &amp; Interaction Design (AI-Assisted)</p>
+
+            <div class="about-contact">
+              <p class="about-contact-label">contact via</p>
+              <div class="social-row">
+                <a class="social-icon" href="https://www.linkedin.com/in/artjoms-suslovs-390536175" target="_blank" rel="noopener" aria-label="LinkedIn"><img src="assets/Social_linkedin.svg" alt=""></a>
+                <a class="social-icon" href="#" target="_blank" rel="noopener" aria-label="Behance"><img src="assets/Social_behance.svg" alt=""></a>
+                <a class="social-icon" href="#" target="_blank" rel="noopener" aria-label="Upwork"><img src="assets/Social_upwork.svg" alt=""></a>
+              </div>
+            </div>
+          </div>
+
+          <div class="about-testimonial">
+            <div class="testimonial-head">
+              <div class="testimonial-nav">
+                <button class="circle-btn" type="button" data-t="prev" aria-label="Previous testimonial">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3L4 8l6 5"/></svg>
+                </button>
+                <button class="circle-btn" type="button" data-t="next" aria-label="Next testimonial">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3l6 5-6 5"/></svg>
+                </button>
+              </div>
+              <h2>What does the clients say?</h2>
+            </div>
+            <p class="testimonial-text" id="testimonialText"></p>
+            <div class="testimonial-by">
+              <img src="assets/Testimonial_avatar_upwork.svg" alt="">
+              <div>
+                <p class="b">Upwork client</p>
+                <p class="muted" id="testimonialSub"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================ ALL WORK PAGE ============================ -->
+<div class="work-root" id="workRoot" role="dialog" aria-modal="true" aria-labelledby="workTitle" aria-hidden="true">
+  <div class="scrim" id="workScrim"></div>
+  <div class="work-panel">
+    <div class="work-body" id="workBody" tabindex="-1">
+
+      <div class="about-topbar pad">
+        <button class="back-btn" id="workBack" type="button">
+          <img src="assets/material-symbols-light_arrow-circle-left.svg" alt="" width="24" height="24">
+          <span>Back</span>
+        </button>
+        <nav class="about-nav" aria-label="All work page">
+          <span aria-current="page">All work</span>
+          <a href="#about">About</a>
+          <a class="work-exit" href="#contact">Contact</a>
+          <a class="work-exit" href="#" download>Download CV</a>
+        </nav>
+      </div>
+
+      <div class="pad work-fit">
+        <div class="work-hero">
+          <h1 class="h-lg" id="workTitle">All work</h1>
+        </div>
+
+        <div class="cf" id="workCarousel"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -915,17 +1054,6 @@ const SUPPORTING = [
     desc:'Corporate site for an interior company, built with a product manager.', tags:['Corporate','With a PM'], shots:4 }
 ];
 
-const QUOTES = [
-  { t:'It was quickly apparent we were working with a senior designer. His design system was easy for our engineers to implement.', by:'TextYourTenant · USA' },
-  { t:'Consistently delivers exceptional, user-centered designs that elevate the product experience. Excels in collaboration, creativity, and attention to detail.', by:'Parfee · Nice, France' },
-  { t:'He completely redesigned our dashboard with great attention to detail, communicated well throughout, and was always open to making adjustments.', by:'Fiducia · Germany' }
-];
-
-/* ============================================================
-   RENDER — cards
-   ============================================================ */
-const ARROW = `<svg class="card-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><path d="M4 12L12 4M5.6 4H12v6.4"/></svg>`;
-
 /* Every drawer opens on this plate until a project brings its own: give an
    entry a `hero` field and it overrides. */
 const HERO = 'assets/Drawer_hero.jpg';
@@ -958,29 +1086,6 @@ function galleryHTML(p){
       <div class="shots">${shots}</div>
     </div>`;
 }
-
-function cardHTML(p, small){
-  return `<button class="card ${small?'card-sm':''} ${p.iris?'card-iris':''}" data-case="${p.id}">
-    <div class="card-top">
-      <span class="card-num">${p.num}</span>
-      ${ARROW}
-    </div>
-    <div class="card-name">${p.name}</div>
-    <div class="card-kick">${p.kicker}</div>
-    <div class="card-desc">${p.desc}</div>
-    <div class="card-tags">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-  </button>`;
-}
-
-/* DBMC is promoted to the hero list, so it is not repeated in this grid -
-   but it stays in SUPPORTING because that is where its drawer content lives. */
-document.getElementById('supporting').innerHTML =
-  SUPPORTING.filter(p=>p.id!=='dbmc').map(p=>cardHTML(p,true)).join('');
-document.getElementById('quotes').innerHTML = QUOTES.map(q=>`
-  <figure class="quote">
-    <p>${q.t}</p>
-    <figcaption><footer>${q.by}</footer></figcaption>
-  </figure>`).join('');
 
 /* ============================================================
    RENDER — case panel
@@ -1068,11 +1173,25 @@ function entryOf(id){
 let current = null;
 let lastFocus = null;
 let revealRaf = 0;
+/* Set when a case is opened while the all-work page is open behind it, so
+   closing the case can return there instead of clearing all the way home. */
+let caseOpenedOverWork = false;
+
+/* Case panel, about page and all-work page are mutually exclusive - the lock
+   class just tracks whether any of them is up, so closing one doesn't unlock
+   the other two. */
+function syncLock(){
+  const anyOpen = root.classList.contains('open') || aboutRoot.classList.contains('open') || workRoot.classList.contains('open');
+  document.body.classList.toggle('is-locked', anyOpen);
+}
 
 function openCase(id, push){
   const entry = entryOf(id);
   if(!entry) return;
   const wasOpen = root.classList.contains('open');
+  /* A case opened from a card inside the all-work carousel keeps that page
+     open behind the drawer instead of closing it - only about does not. */
+  caseOpenedOverWork = workRoot.classList.contains('open');
   current = entry;
   const c = entry.list[entry.i];
   lastFocus = document.activeElement;
@@ -1115,9 +1234,10 @@ function openCase(id, push){
   const sync = () => bar.classList.toggle('is-stuck', bodyEl.scrollTop > Math.max(limit, 0));
   bodyEl.onscroll = sync;
   sync();
+  if(aboutRoot.classList.contains('open')) closeAbout(false);
   root.classList.add('open');
   root.setAttribute('aria-hidden','false');
-  document.body.classList.add('is-locked');
+  syncLock();
   bodyEl.scrollTop = 0;
   bodyEl.focus({ preventScroll:true });   /* the panel is still off-screen at this
                                              point; a scroll-into-view here drags the
@@ -1131,10 +1251,22 @@ function closeCase(push){
   root.classList.remove('is-revealing');
   root.classList.remove('open');
   root.setAttribute('aria-hidden','true');
-  document.body.classList.remove('is-locked');
+  syncLock();
   current = null;
-  if(push !== false && location.hash.startsWith('#/work/')) history.pushState({},'', location.pathname + location.search);
-  if(lastFocus) lastFocus.focus();
+  if(push !== false){
+    /* Opened from the all-work carousel: land back on that page rather than
+       clearing the hash all the way to home. */
+    if(caseOpenedOverWork && workRoot.classList.contains('open')){
+      if(location.hash !== '#/work') history.pushState({work:true},'', '#/work');
+    } else if(location.hash.startsWith('#/work/')){
+      history.pushState({},'', location.pathname + location.search);
+    }
+  }
+  caseOpenedOverWork = false;
+  if(lastFocus){
+    if(window.heroPreviewRestoreFocus && lastFocus.closest('#heroWork')) window.heroPreviewRestoreFocus(lastFocus);
+    else lastFocus.focus();
+  }
 }
 
 function step(d){
@@ -1142,6 +1274,267 @@ function step(d){
   const L = current.list;
   openCase(L[(current.i + d + L.length) % L.length].id);
 }
+
+/* ============================================================
+   ABOUT PAGE
+   Same shape as the case panel's open/close, minus the per-entry
+   content swap and hero wipe - there is only one page, so those
+   don't apply here.
+   ============================================================ */
+const aboutRoot = document.getElementById('aboutRoot');
+const aboutBody = document.getElementById('aboutBody');
+let lastFocusAbout = null;
+
+function openAbout(push){
+  const wasOpen = aboutRoot.classList.contains('open');
+  if(root.classList.contains('open')) closeCase(false);
+  if(workRoot.classList.contains('open')) closeWork(false);
+  if(!wasOpen){
+    lastFocusAbout = document.activeElement;
+    aboutRoot.classList.add('open');
+    aboutRoot.setAttribute('aria-hidden','false');
+    syncLock();
+    aboutBody.scrollTop = 0;
+    aboutBody.focus({ preventScroll:true });
+  }
+  if(push !== false && location.hash !== '#/about') history.pushState({about:true},'', '#/about');
+}
+
+function closeAbout(push){
+  aboutRoot.classList.remove('open');
+  aboutRoot.setAttribute('aria-hidden','true');
+  syncLock();
+  if(push !== false && location.hash === '#/about') history.pushState({},'', location.pathname + location.search);
+  if(lastFocusAbout) lastFocusAbout.focus();
+}
+
+/* ============================================================
+   ALL WORK PAGE
+   Same shape as the about page's open/close above.
+   ============================================================ */
+const workRoot = document.getElementById('workRoot');
+const workBody = document.getElementById('workBody');
+let lastFocusWork = null;
+
+function openWork(push){
+  const wasOpen = workRoot.classList.contains('open');
+  if(root.classList.contains('open')) closeCase(false);
+  if(aboutRoot.classList.contains('open')) closeAbout(false);
+  if(!wasOpen){
+    lastFocusWork = document.activeElement;
+    workRoot.classList.add('open');
+    workRoot.setAttribute('aria-hidden','false');
+    syncLock();
+    workBody.scrollTop = 0;
+    workBody.focus({ preventScroll:true });
+  }
+  if(push !== false && location.hash !== '#/work') history.pushState({work:true},'', '#/work');
+}
+
+function closeWork(push){
+  workRoot.classList.remove('open');
+  workRoot.setAttribute('aria-hidden','true');
+  syncLock();
+  if(push !== false && location.hash === '#/work') history.pushState({},'', location.pathname + location.search);
+  if(lastFocusWork) lastFocusWork.focus();
+}
+
+/* ============================================================
+   ALL WORK PAGE — coverflow carousel
+   All seven entries, cover plus name plus kicker (year is unset
+   for most cases still, so the kicker line carries the subtitle
+   instead — swap in Year once it is confirmed per case).
+   Hand-ported from a React/shadcn reference component to plain
+   JS: same rAF ease-out settle, same distance-based tilt/depth/
+   fade, same pointer-drag-with-flick math, no framework under it.
+   A tap on any cover (or Enter/Space on the centred one) opens the
+   case panel directly; arrows and dots still just bring a cover to
+   the front without opening it.
+   ============================================================ */
+const WORK_ITEMS = [...CASES, ...SUPPORTING].map(p => ({
+  id: p.id, name: p.name, kicker: p.kicker,
+  cover: p.cover || 'assets/Project_preview.png'
+}));
+
+function initCoverflow(container, items){
+  const count = items.length;
+  container.innerHTML = `
+    <div class="cf-stage">
+      <div class="cf-frame" tabindex="0" role="region" aria-roledescription="carousel" aria-label="All work">
+        <div class="cf-track">
+          ${items.map((it,i)=>`
+            <div class="cf-card" data-i="${i}" role="group" aria-roledescription="slide" aria-label="${i+1} of ${count}: ${it.name}">
+              <div class="cf-cover" style="background-image:url('${it.cover}')"></div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <button type="button" class="cf-arrow cf-arrow-prev" aria-label="Previous work">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M10 3L4 8l6 5"/></svg>
+      </button>
+      <button type="button" class="cf-arrow cf-arrow-next" aria-label="Next work">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3l6 5-6 5"/></svg>
+      </button>
+    </div>
+    <div class="cf-caption">
+      <p class="cf-title" id="cfTitle"></p>
+      <p class="cf-subtitle" id="cfSubtitle"></p>
+    </div>
+    <div class="cf-dots" id="cfDots">
+      ${items.map((it,i)=>`<button type="button" class="cf-dot" data-i="${i}" aria-label="Go to ${it.name}"></button>`).join('')}
+    </div>`;
+
+  const frame   = container.querySelector('.cf-frame');
+  const cards   = [...container.querySelectorAll('.cf-card')];
+  const dots    = [...container.querySelectorAll('.cf-dot')];
+  const titleEl = container.querySelector('#cfTitle');
+  const subEl   = container.querySelector('#cfSubtitle');
+
+  const ROTATE = 44, DEPTH = .6, FALLOFF = .56, FADE = .1, GAP = .05;
+
+  let pos = 0, target = 0, width = 0, raf = null, selected = 0, drag = null;
+
+  const indexAt = p => ((Math.round(p) % count) + count) % count;
+
+  function paint(){
+    if(!width) return;
+    const pitch = width * (1 + GAP);
+    cards.forEach((card, i) => {
+      let offset = i - pos;
+      offset = ((offset % count) + count) % count;
+      if(offset > count / 2) offset -= count;
+      const distance = Math.abs(offset);
+      const ramp = Math.pow(distance, FALLOFF);
+      const tilt = Math.min(ROTATE * ramp, 82) * Math.sign(offset);
+      card.style.transform = `translateX(calc(-50% + ${offset * pitch}px)) translateZ(${-DEPTH * width * ramp}px) rotateY(${-tilt}deg)`;
+      const edge = Math.min(1, Math.max(0, count / 2 - distance));
+      card.style.opacity = String(Math.max(0, 1 - FADE * distance) * edge);
+      card.style.zIndex = String(100 - Math.round(distance));
+    });
+  }
+
+  function renderCaption(){
+    const it = items[selected];
+    titleEl.textContent = it.name;
+    subEl.textContent = it.kicker;
+    dots.forEach((d,i) => d.classList.toggle('is-active', i === selected));
+  }
+
+  function settle(to){
+    if(raf !== null) cancelAnimationFrame(raf);
+    target = to;
+    const nextSelected = indexAt(to);
+    if(nextSelected !== selected){ selected = nextSelected; renderCaption(); }
+    const step = () => {
+      const remaining = target - pos;
+      if(Math.abs(remaining) < .0004){ pos = target; paint(); raf = null; return; }
+      pos += remaining * .16;
+      paint();
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  const goTo   = i  => settle(i + Math.round((target - i) / count) * count);
+  const nudge  = by => settle(Math.round(target) + by);
+
+  function measure(){
+    if(!cards[0]) return;
+    width = cards[0].offsetWidth;
+    paint();
+  }
+
+  /* Picking the clicked card off e.target (or elementFromPoint) is unreliable
+     here: hit-testing a rotateY()'d child of a perspective/preserve-3d parent
+     can resolve to the flat .cf-track behind it instead of the tilted card
+     actually under the pointer - elementsFromPoint's full z-stack still ranks
+     the card correctly even when the single-hit APIs miss it. */
+  function cardAtPoint(x,y){
+    for(const el of document.elementsFromPoint(x,y)) if(el.classList?.contains('cf-card')) return el;
+    return null;
+  }
+
+  frame.addEventListener('pointerdown', e => {
+    if(raf !== null){ cancelAnimationFrame(raf); raf = null; }
+    frame.setPointerCapture(e.pointerId);
+    target = pos;
+    /* setPointerCapture also retargets every later event on this pointer
+       (including pointerup) to `frame` itself, per spec - so the card has to
+       be resolved now, at pointerdown, not from the later pointerup event. */
+    drag = { id:e.pointerId, x:e.clientX, pos, v:0, t:performance.now(), moved:false, card:cardAtPoint(e.clientX, e.clientY) };
+  });
+
+  frame.addEventListener('pointermove', e => {
+    if(!drag || drag.id !== e.pointerId) return;
+    const pitch = width * (1 + GAP);
+    if(!pitch) return;
+    if(Math.abs(e.clientX - drag.x) > 4) drag.moved = true;
+    const now = performance.now();
+    const prev = pos;
+    pos = drag.pos - (e.clientX - drag.x) / pitch;
+    drag.v = ((pos - prev) / Math.max(now - drag.t, 1)) * 1000;
+    drag.t = now;
+    const i = indexAt(pos);
+    if(i !== selected){ selected = i; renderCaption(); }
+    paint();
+  });
+
+  function endDrag(e){
+    if(!drag || drag.id !== e.pointerId) return;
+    const wasMoved = drag.moved;
+    const carried = Math.max(-2, Math.min(2, drag.v * .18));
+    const clickedCard = !wasMoved ? drag.card : null;
+    drag = null;
+    if(clickedCard){
+      openCase(items[Number(clickedCard.dataset.i)].id);
+      return;
+    }
+    settle(Math.round(pos + carried));
+  }
+  frame.addEventListener('pointerup', endDrag);
+  frame.addEventListener('pointercancel', endDrag);
+
+  frame.addEventListener('keydown', e => {
+    if(e.key === 'ArrowLeft'){ e.preventDefault(); nudge(-1); }
+    else if(e.key === 'ArrowRight'){ e.preventDefault(); nudge(1); }
+    else if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openCase(items[selected].id); }
+  });
+
+  container.querySelector('.cf-arrow-prev').addEventListener('click', () => nudge(-1));
+  container.querySelector('.cf-arrow-next').addEventListener('click', () => nudge(1));
+  dots.forEach(d => d.addEventListener('click', () => goTo(Number(d.dataset.i))));
+
+  renderCaption();
+  measure();
+  new ResizeObserver(measure).observe(frame);
+}
+initCoverflow(document.getElementById('workCarousel'), WORK_ITEMS);
+
+/* ============================================================
+   ABOUT PAGE — testimonial carousel
+   Fuller quotes than the strip on the home page (the featured
+   TextYourTenant one runs long there); same Upwork provenance.
+   ============================================================ */
+const ABOUT_QUOTES = [
+  { t:'Artjoms was an absolute pleasure to work with. He produced excellent designs, meeting our business needs, and went above and beyond to ensure our end users would have a delightful experience with our software. Our project consisted of mobile-responsive web SaaS dashboard of high complexity, and he grasped the project quickly and it was quickly apparent we were working with a senior designer.', by:'TextYourTenant · USA' },
+  { t:'Consistently delivers exceptional, user-centered designs that elevate the product experience. Excels in collaboration, creativity, and attention to detail.', by:'Parfee · Nice, France' },
+  { t:'He completely redesigned our dashboard with great attention to detail, communicated well throughout, and was always open to making adjustments when needed.', by:'Fiducia · Germany' }
+];
+let tIndex = 0;
+const testimonialText = document.getElementById('testimonialText');
+const testimonialSub  = document.getElementById('testimonialSub');
+function renderTestimonial(){
+  const q = ABOUT_QUOTES[tIndex];
+  testimonialText.classList.add('is-fade');
+  void testimonialText.offsetWidth;           /* commit the from-state */
+  testimonialText.textContent = q.t;
+  testimonialSub.textContent = q.by;
+  testimonialText.classList.remove('is-fade');
+}
+function stepTestimonial(d){
+  tIndex = (tIndex + d + ABOUT_QUOTES.length) % ABOUT_QUOTES.length;
+  renderTestimonial();
+}
+renderTestimonial();
 
 document.addEventListener('click', e => {
   const card = e.target.closest('[data-case]');
@@ -1155,22 +1548,55 @@ document.addEventListener('click', e => {
     openCase(card.dataset.case);      /* openCase ignores ids it does not know */
     return;
   }
+  /* Same real-href, JS-intercepts-first pattern as the case cards above:
+     href="#about" still works with no JS, e.preventDefault() stops the
+     browser's own scroll-to-anchor once JS takes over. */
+  const aboutLink = e.target.closest('a[href="#about"]');
+  if(aboutLink){ e.preventDefault(); openAbout(); return; }
+
+  /* Same pattern again for "All work": it opens an overlay too, so it needs
+     the real interception, not the passive anchor-navigation below. */
+  const workLink = e.target.closest('a[href="#/work"]');
+  if(workLink){ e.preventDefault(); openWork(); return; }
+
+  /* "All work" / "Contact" inside the about page: close the overlay and let
+     the browser's own anchor navigation carry the hash the rest of the way. */
+  const exitLink = e.target.closest('.about-exit');
+  if(exitLink){ closeAbout(false); }
+
+  /* "About" / "Contact" inside the all-work page: same idea. */
+  const workExitLink = e.target.closest('.work-exit');
+  if(workExitLink){ closeWork(false); }
+
+  if(e.target.closest('#aboutBack') || e.target.closest('#aboutScrim')){ closeAbout(); return; }
+  if(e.target.closest('#workBack') || e.target.closest('#workScrim')){ closeWork(); return; }
+
+  const tNav = e.target.closest('[data-t]');
+  if(tNav){ stepTestimonial(tNav.dataset.t === 'next' ? 1 : -1); return; }
+
   const nav = e.target.closest('[data-nav]');
   if(nav){ step(nav.dataset.nav === 'next' ? 1 : -1); return; }
   if(e.target.closest('#panelClose') || e.target.closest('#scrim')) closeCase();
 });
 
 document.addEventListener('keydown', e => {
-  if(!current) return;
-  if(e.key === 'Escape')     closeCase();
-  if(e.key === 'ArrowRight') step(1);
-  if(e.key === 'ArrowLeft')  step(-1);
+  if(current){
+    if(e.key === 'Escape')     closeCase();
+    if(e.key === 'ArrowRight') step(1);
+    if(e.key === 'ArrowLeft')  step(-1);
+  }
+  if(aboutRoot.classList.contains('open') && e.key === 'Escape') closeAbout();
+  if(workRoot.classList.contains('open') && e.key === 'Escape') closeWork();
 });
 
 function fromHash(push){
   const m = location.hash.match(/^#\/work\/(.+)$/);
-  if(m) openCase(m[1], push);
-  else if(current >= 0) closeCase(false);
+  if(m){ openCase(m[1], push); return; }
+  if(location.hash === '#/about'){ openAbout(push); return; }
+  if(location.hash === '#/work'){ openWork(push); return; }
+  if(root.classList.contains('open')) closeCase(false);
+  if(aboutRoot.classList.contains('open')) closeAbout(false);
+  if(workRoot.classList.contains('open')) closeWork(false);
 }
 window.addEventListener('popstate', () => fromHash(false));
 fromHash(false);
@@ -1206,8 +1632,10 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
 
 /* ============================================================
    HERO — WORK PREVIEW
-   Hovering a project name swaps the plate beside it. Fiducia is
-   the resting state, matching the artboard.
+   Hovering a project name swaps the plate beside it. Fiducia's
+   photo is the resting plate, matching the artboard - but the
+   NAME itself only turns iris while it is actually being hovered
+   or focused. It never carries a "default selected" look.
    ============================================================ */
 (function heroPreview(){
   const list = document.getElementById('heroWork');
@@ -1218,18 +1646,37 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   const plates = [...shots.querySelectorAll('.hero-shot')];
   const REST = 'fiducia';
 
-  function show(slug){
-    links.forEach(a => a.classList.toggle('is-on', a.dataset.slug === slug));
-    plates.forEach(p => p.classList.toggle('is-on', p.dataset.slug === slug));
-  }
+  const showPlate = slug => plates.forEach(p => p.classList.toggle('is-on', p.dataset.slug === slug));
+  const highlight  = slug => links.forEach(a => a.classList.toggle('is-on', slug != null && a.dataset.slug === slug));
   const zoom = on => shots.classList.toggle('is-zoom', on);
   links.forEach(a => {
-    a.addEventListener('pointerenter', () => { show(a.dataset.slug); zoom(true); });
-    a.addEventListener('focus',        () => { show(a.dataset.slug); zoom(true); });
-    a.addEventListener('blur',         () => zoom(false));
+    a.addEventListener('pointerenter', () => { showPlate(a.dataset.slug); highlight(a.dataset.slug); zoom(true); });
+    a.addEventListener('focus',        () => { if(!suppressFocus) { showPlate(a.dataset.slug); highlight(a.dataset.slug); zoom(true); } });
+    a.addEventListener('blur',         () => { highlight(null); zoom(false); });
   });
-  list.addEventListener('pointerleave', () => { show(REST); zoom(false); });
-  show(REST);
+  list.addEventListener('pointerleave', () => { showPlate(REST); highlight(null); zoom(false); });
+  showPlate(REST);
+
+  /* The case drawer returns focus to the link that opened it when it closes,
+     which would normally re-trigger the hover preview above and leave the
+     link's name stuck highlighted even though the pointer is nowhere near
+     it. restoreFocus() suspends that one focus event so the link just gets
+     its a11y focus back, with the preview left at rest. */
+  let suppressFocus = false;
+  window.heroPreviewRestoreFocus = el => {
+    suppressFocus = true;
+    el.focus();
+    showPlate(REST); highlight(null); zoom(false);
+    suppressFocus = false;
+  };
+
+  /* Back/forward navigation can restore the page from bfcache with whatever
+     hover/focus state it had when the user left - including a link mid
+     highlight. Force everything back to rest whenever the page is (re)shown. */
+  window.addEventListener('pageshow', () => {
+    if(document.activeElement && list.contains(document.activeElement)) document.activeElement.blur();
+    showPlate(REST); highlight(null); zoom(false);
+  });
 })();
 
 /* ============================================================
@@ -1615,9 +2062,9 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     return c;
   }
 
-  /* assets/background1.jpg - the layer the cursor uncovers. Until it has
-     loaded (or if it fails) the procedural schematic below stands in, so the
-     effect is never blank. */
+  /* assets/abstract-blue-galaxy-space-background-with-colorful-cosmos.jpg -
+     the layer the cursor uncovers. Until it has loaded (or if it fails) the
+     procedural schematic below stands in, so the effect is never blank. */
   let revealImg = null, portraitImg = null;
   const plateEl = hero.querySelector('.hero-portrait .plate');
   function loadInto(src, set){
@@ -1626,7 +2073,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     im.onload = () => { set(im); if(velocity) refreshReveal(); };
     im.src = src;
   }
-  loadInto('assets/background1.jpg',      im => revealImg   = im);
+  loadInto('assets/abstract-blue-galaxy-space-background-with-colorful-cosmos.jpg', im => revealImg = im);
   loadInto('assets/Profile_picture.png',  im => portraitImg = im);
 
   const revealTex = gl.createTexture();
@@ -1813,21 +2260,6 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   }, { passive:true });
   hero.addEventListener('pointerleave', () => { last = null; }, { passive:true });
 
-  /* one scripted sweep on load, so the effect announces itself */
-  function intro(){
-    const t0 = performance.now(), dur = 1500 / SPEED;   /* the intro keeps pace with the sim */
-    let prev = null;
-    (function sweep(now){
-      const k = Math.min((now - t0) / dur, 1);
-      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-      const nx = 0.14 + e * 0.62;
-      const ny = 0.62 - Math.sin(e * Math.PI) * 0.20;
-      if(prev) splat(nx, ny, (nx - prev.x) * FORCE * aspect * .8, (ny - prev.y) * FORCE * .8, 0.55);
-      prev = { x:nx, y:ny };
-      if(k < 1) requestAnimationFrame(sweep);
-    })(t0);
-  }
-
   /* ---------- loop ---------- */
   let visible = true, raf = 0, tPrev = performance.now();
 
@@ -1851,7 +2283,6 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   build();
   cv.classList.add('is-live');
   raf = requestAnimationFrame(frame);
-  setTimeout(intro, 700);
   setTimeout(() => { if(hint) hint.classList.add('is-gone'); }, 9000);
 
   gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); cancelAnimationFrame(raf); bail(); });

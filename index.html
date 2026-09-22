@@ -571,14 +571,12 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 .about-body{pointer-events:auto;height:100%;overflow-y:auto;background:var(--canvas);overscroll-behavior:contain;}
 
 .about-topbar{position:sticky;top:0;z-index:2;background:var(--canvas);
-  display:flex;align-items:center;gap:var(--s22);flex-wrap:wrap;
+  display:flex;align-items:center;justify-content:space-between;gap:var(--s22);flex-wrap:wrap;
   padding-block:var(--s22);border-bottom:1px solid var(--hair-soft);}
 .back-btn{display:inline-flex;align-items:center;gap:var(--s8);font-size:var(--t-meta);
   transition:opacity .2s var(--ease);}
 .back-btn:hover{opacity:.6;}
 .back-btn img{display:block;width:24px;height:24px;}
-.about-clock{flex:1;text-align:center;font-size:var(--t-hero-meta-sm);color:var(--fog);
-  font-variant-numeric:tabular-nums;}
 .about-nav{display:flex;flex-wrap:wrap;gap:clamp(10px,.94vw,18px);font-size:var(--t-hero-meta-sm);}
 .about-nav a{transition:opacity .2s var(--ease);}
 .about-nav a:hover{opacity:.6;}
@@ -624,17 +622,12 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 .testimonial-by img{width:40px;height:40px;border-radius:50%;display:block;}
 .testimonial-by .b{font-weight:700;}
 
-@media (max-width:939px){
-  .about-topbar{justify-content:space-between;}
-  .about-clock{order:3;flex-basis:100%;text-align:left;}
-}
-
 /* ============================================================
    ALL WORK PAGE
    Same rise-from-bottom choreography as the About overlay above,
-   and it shares .about-topbar/.about-clock/.about-nav/.back-btn
-   wholesale rather than forking them - none of those rules are
-   About-specific, just "the bar at the top of a full-page overlay".
+   and it shares .about-topbar/.about-nav/.back-btn wholesale
+   rather than forking them - none of those rules are About-
+   specific, just "the bar at the top of a full-page overlay".
    ============================================================ */
 .work-root{position:fixed;inset:0;z-index:95;pointer-events:none;overflow:clip;}
 .work-root.open{pointer-events:auto;}
@@ -645,25 +638,47 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   transition:transform var(--t-drawer) var(--ease-modal) 0s;}
 .work-root.open .work-panel{transform:translateY(0);transition-delay:calc(var(--t-scrim) * 0.5);}
 
-.work-body{pointer-events:auto;height:100%;overflow-y:auto;background:var(--canvas);overscroll-behavior:contain;}
+.work-body{pointer-events:auto;height:100%;overflow:hidden;background:var(--canvas);
+  display:flex;flex-direction:column;}
+.work-body .about-topbar{flex:none;}
 
-.work-hero{padding-block:var(--s63) 0;max-width:660px;}
+/* container-type:size makes .work-fit measurable in cqh/cqw - its
+   height is set by flex (100% of work-body minus the topbar, whatever
+   that topbar ends up being - it wraps to two rows under 940px), so
+   sizing children off cqh (not vh) means they always add up to less
+   than the space actually left over, on any device, instead of each
+   independently guessing a share of the whole viewport. */
+.work-fit{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;
+  min-height:0;overflow:hidden;container-type:size;container-name:workfit;}
+
+.work-hero{padding:0;max-width:660px;margin-bottom:clamp(6px,3cqh,24px);}
+.work-hero .h-lg{font-size:clamp(22px,min(4.6vw,9cqh),56px);}
 
 /* ============================================================
    COVERFLOW CAROUSEL
    Ported from a React/shadcn reference component to plain JS -
    same math (rAF ease-out settle, distance-based tilt/depth/fade,
    pointer drag with a flick carry), no framework underneath.
+   Every size below is a fraction of .work-fit's own height (cqh),
+   not the viewport's - the whole stack (card, arrows, caption, dots)
+   is budgeted to add up to well under 100cqh, so it always fits one
+   screen with no page scroll, on short/landscape viewports too.
    ============================================================ */
-.cf{--cf-card:clamp(180px,26vw,320px);width:100%;padding-block:var(--s115) var(--s63);}
+.cf{--cf-card:clamp(96px,min(26vw,38cqh),320px);width:100%;
+  padding-block:clamp(8px,4cqh,var(--s115)) clamp(6px,2.5cqh,var(--s63));}
 /* The arrows live in .cf-stage, one level above .cf-frame, on purpose: a
    perspective parent pulls any transformed child - even a plain 2D one like
    the arrows' translateY(-50%) - into its 3D scene and skews its position.
    Keeping them outside the perspective container sidesteps that entirely. */
 .cf-stage{position:relative;}
 .cf-frame{cursor:grab;overflow:hidden;
-  padding-block:var(--s54);outline:none;touch-action:pan-y;
-  perspective:calc(var(--cf-card) * 3);}
+  padding-block:clamp(6px,3cqh,var(--s54));outline:none;touch-action:pan-y;
+  perspective:calc(var(--cf-card) * 3);
+  /* The frame's own overflow:hidden clips the outermost cards with a hard
+     edge - mask them out instead, so they dissolve into the page rather
+     than getting cut off mid-card. */
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 14%,#000 86%,transparent 100%);
+  mask-image:linear-gradient(to right,transparent 0,#000 14%,#000 86%,transparent 100%);}
 .cf-frame:active{cursor:grabbing;}
 .cf-frame:focus-visible{box-shadow:var(--ring);border-radius:var(--r-card);}
 .cf-track{position:relative;height:var(--cf-card);transform-style:preserve-3d;}
@@ -680,13 +695,12 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 .cf-arrow-prev{left:0;}
 .cf-arrow-next{right:0;}
 
-.cf-caption{margin-top:var(--s43);display:flex;flex-direction:column;align-items:center;
+.cf-caption{margin-top:clamp(6px,3cqh,var(--s43));display:flex;flex-direction:column;align-items:center;
   text-align:center;gap:var(--s8);transition:opacity .2s var(--ease);}
-.cf-title{font-size:var(--t-h-sm);line-height:1.2;}
+.cf-title{font-size:clamp(16px,6cqh,var(--t-h-sm));line-height:1.2;}
 .cf-subtitle{font-size:var(--t-meta);color:var(--fog);max-width:46ch;}
-.cf-open{margin-top:var(--s17);}
 
-.cf-dots{display:flex;align-items:center;justify-content:center;gap:var(--s10);margin-top:var(--s43);}
+.cf-dots{display:flex;align-items:center;justify-content:center;gap:var(--s10);margin-top:clamp(6px,2.5cqh,var(--s43));}
 .cf-dot{width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:.28;
   transition:opacity .2s var(--ease),transform .2s var(--ease);}
 .cf-dot.is-active{opacity:1;transform:scale(1.3);}
@@ -786,7 +800,6 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
           <img src="assets/material-symbols-light_arrow-circle-left.svg" alt="" width="24" height="24">
           <span>Back</span>
         </button>
-        <p class="about-clock" id="aboutClock">--:--:--</p>
         <nav class="about-nav" aria-label="About page">
           <a class="about-exit" href="#/work">All work</a>
           <span aria-current="page">About</span>
@@ -863,7 +876,6 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
           <img src="assets/material-symbols-light_arrow-circle-left.svg" alt="" width="24" height="24">
           <span>Back</span>
         </button>
-        <p class="about-clock" id="workClock">--:--:--</p>
         <nav class="about-nav" aria-label="All work page">
           <span aria-current="page">All work</span>
           <a href="#about">About</a>
@@ -872,7 +884,7 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
         </nav>
       </div>
 
-      <div class="pad">
+      <div class="pad work-fit">
         <div class="work-hero">
           <h1 class="h-lg" id="workTitle">All work</h1>
         </div>
@@ -1346,8 +1358,9 @@ function closeWork(push){
    Hand-ported from a React/shadcn reference component to plain
    JS: same rAF ease-out settle, same distance-based tilt/depth/
    fade, same pointer-drag-with-flick math, no framework under it.
-   A tap on the centred cover (or Enter/Space, or "View case") opens
-   the case panel; a tap on a side cover brings it to the front.
+   A tap on any cover (or Enter/Space on the centred one) opens the
+   case panel directly; arrows and dots still just bring a cover to
+   the front without opening it.
    ============================================================ */
 const WORK_ITEMS = [...CASES, ...SUPPORTING].map(p => ({
   id: p.id, name: p.name, kicker: p.kicker,
@@ -1376,7 +1389,6 @@ function initCoverflow(container, items){
     <div class="cf-caption">
       <p class="cf-title" id="cfTitle"></p>
       <p class="cf-subtitle" id="cfSubtitle"></p>
-      <button type="button" class="pill pill-sm cf-open" id="cfOpen">View case →</button>
     </div>
     <div class="cf-dots" id="cfDots">
       ${items.map((it,i)=>`<button type="button" class="cf-dot" data-i="${i}" aria-label="Go to ${it.name}"></button>`).join('')}
@@ -1387,7 +1399,6 @@ function initCoverflow(container, items){
   const dots    = [...container.querySelectorAll('.cf-dot')];
   const titleEl = container.querySelector('#cfTitle');
   const subEl   = container.querySelector('#cfSubtitle');
-  const openBtn = container.querySelector('#cfOpen');
 
   const ROTATE = 44, DEPTH = .6, FALLOFF = .56, FADE = .1, GAP = .05;
 
@@ -1443,11 +1454,24 @@ function initCoverflow(container, items){
     paint();
   }
 
+  /* Picking the clicked card off e.target (or elementFromPoint) is unreliable
+     here: hit-testing a rotateY()'d child of a perspective/preserve-3d parent
+     can resolve to the flat .cf-track behind it instead of the tilted card
+     actually under the pointer - elementsFromPoint's full z-stack still ranks
+     the card correctly even when the single-hit APIs miss it. */
+  function cardAtPoint(x,y){
+    for(const el of document.elementsFromPoint(x,y)) if(el.classList?.contains('cf-card')) return el;
+    return null;
+  }
+
   frame.addEventListener('pointerdown', e => {
     if(raf !== null){ cancelAnimationFrame(raf); raf = null; }
     frame.setPointerCapture(e.pointerId);
     target = pos;
-    drag = { id:e.pointerId, x:e.clientX, pos, v:0, t:performance.now(), moved:false };
+    /* setPointerCapture also retargets every later event on this pointer
+       (including pointerup) to `frame` itself, per spec - so the card has to
+       be resolved now, at pointerdown, not from the later pointerup event. */
+    drag = { id:e.pointerId, x:e.clientX, pos, v:0, t:performance.now(), moved:false, card:cardAtPoint(e.clientX, e.clientY) };
   });
 
   frame.addEventListener('pointermove', e => {
@@ -1469,12 +1493,10 @@ function initCoverflow(container, items){
     if(!drag || drag.id !== e.pointerId) return;
     const wasMoved = drag.moved;
     const carried = Math.max(-2, Math.min(2, drag.v * .18));
-    const clickedCard = !wasMoved ? e.target.closest('.cf-card') : null;
+    const clickedCard = !wasMoved ? drag.card : null;
     drag = null;
     if(clickedCard){
-      const i = Number(clickedCard.dataset.i);
-      if(i === selected) openCase(items[i].id);
-      else goTo(i);
+      openCase(items[Number(clickedCard.dataset.i)].id);
       return;
     }
     settle(Math.round(pos + carried));
@@ -1491,7 +1513,6 @@ function initCoverflow(container, items){
   container.querySelector('.cf-arrow-prev').addEventListener('click', () => nudge(-1));
   container.querySelector('.cf-arrow-next').addEventListener('click', () => nudge(1));
   dots.forEach(d => d.addEventListener('click', () => goTo(Number(d.dataset.i))));
-  openBtn.addEventListener('click', () => openCase(items[selected].id));
 
   renderCaption();
   measure();
@@ -1612,16 +1633,11 @@ fromHash(false);
    CLOCK
    ============================================================ */
 const clockEl = document.getElementById('clock');
-const aboutClockEl = document.getElementById('aboutClock');
-const workClockEl = document.getElementById('workClock');
 const fmt = new Intl.DateTimeFormat('en-GB',{
   hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Europe/Riga'
 });
 (function tick(){
-  const t = fmt.format(new Date());
-  clockEl.textContent = t;
-  aboutClockEl.textContent = t;
-  workClockEl.textContent = t;
+  clockEl.textContent = fmt.format(new Date());
   setTimeout(tick, 1000);
 })();
 
@@ -2057,9 +2073,9 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     return c;
   }
 
-  /* assets/background1.jpg - the layer the cursor uncovers. Until it has
-     loaded (or if it fails) the procedural schematic below stands in, so the
-     effect is never blank. */
+  /* assets/abstract-blue-galaxy-space-background-with-colorful-cosmos.jpg -
+     the layer the cursor uncovers. Until it has loaded (or if it fails) the
+     procedural schematic below stands in, so the effect is never blank. */
   let revealImg = null, portraitImg = null;
   const plateEl = hero.querySelector('.hero-portrait .plate');
   function loadInto(src, set){
@@ -2068,7 +2084,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     im.onload = () => { set(im); if(velocity) refreshReveal(); };
     im.src = src;
   }
-  loadInto('assets/background1.jpg',      im => revealImg   = im);
+  loadInto('assets/abstract-blue-galaxy-space-background-with-colorful-cosmos.jpg', im => revealImg = im);
   loadInto('assets/Profile_picture.png',  im => portraitImg = im);
 
   const revealTex = gl.createTexture();
