@@ -2255,21 +2255,6 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   }, { passive:true });
   hero.addEventListener('pointerleave', () => { last = null; }, { passive:true });
 
-  /* one scripted sweep on load, so the effect announces itself */
-  function intro(){
-    const t0 = performance.now(), dur = 1500 / SPEED;   /* the intro keeps pace with the sim */
-    let prev = null;
-    (function sweep(now){
-      const k = Math.min((now - t0) / dur, 1);
-      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-      const nx = 0.14 + e * 0.62;
-      const ny = 0.62 - Math.sin(e * Math.PI) * 0.20;
-      if(prev) splat(nx, ny, (nx - prev.x) * FORCE * aspect * .8, (ny - prev.y) * FORCE * .8, 0.55);
-      prev = { x:nx, y:ny };
-      if(k < 1) requestAnimationFrame(sweep);
-    })(t0);
-  }
-
   /* ---------- loop ---------- */
   let visible = true, raf = 0, tPrev = performance.now();
 
@@ -2293,7 +2278,6 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   build();
   cv.classList.add('is-live');
   raf = requestAnimationFrame(frame);
-  setTimeout(intro, 700);
   setTimeout(() => { if(hint) hint.classList.add('is-gone'); }, 9000);
 
   gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); cancelAnimationFrame(raf); bail(); });
