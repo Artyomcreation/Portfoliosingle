@@ -1262,7 +1262,10 @@ function closeCase(push){
     }
   }
   caseOpenedOverWork = false;
-  if(lastFocus) lastFocus.focus();
+  if(lastFocus){
+    if(window.heroPreviewRestoreFocus && lastFocus.closest('#heroWork')) window.heroPreviewRestoreFocus(lastFocus);
+    else lastFocus.focus();
+  }
 }
 
 function step(d){
@@ -1643,11 +1646,24 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   const zoom = on => shots.classList.toggle('is-zoom', on);
   links.forEach(a => {
     a.addEventListener('pointerenter', () => { show(a.dataset.slug); zoom(true); });
-    a.addEventListener('focus',        () => { show(a.dataset.slug); zoom(true); });
+    a.addEventListener('focus',        () => { if(!suppressFocus) { show(a.dataset.slug); zoom(true); } });
     a.addEventListener('blur',         () => zoom(false));
   });
   list.addEventListener('pointerleave', () => { show(REST); zoom(false); });
   show(REST);
+
+  /* The case drawer returns focus to the link that opened it when it closes,
+     which would normally re-trigger the hover preview above and leave the
+     link's name stuck highlighted even though the pointer is nowhere near
+     it. restoreFocus() suspends that one focus event so the link just gets
+     its a11y focus back, with the preview left at rest. */
+  let suppressFocus = false;
+  window.heroPreviewRestoreFocus = el => {
+    suppressFocus = true;
+    el.focus();
+    show(REST);
+    suppressFocus = false;
+  };
 })();
 
 /* ============================================================
