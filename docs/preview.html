@@ -2062,7 +2062,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     return c;
   }
 
-  /* assets/abstract-blue-galaxy-space-background-with-colorful-cosmos.jpg -
+  /* assets/Hero_background.jpg -
      the layer the cursor uncovers. Until it has loaded (or if it fails) the
      procedural schematic below stands in, so the effect is never blank. */
   let revealImg = null, portraitImg = null;
@@ -2073,7 +2073,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     im.onload = () => { set(im); if(velocity) refreshReveal(); };
     im.src = src;
   }
-  loadInto('assets/abstract-blue-galaxy-space-background-with-colorful-cosmos.jpg', im => revealImg = im);
+  loadInto('assets/Hero_background.jpg', im => revealImg = im);
   loadInto('assets/Profile_picture.png',  im => portraitImg = im);
 
   const revealTex = gl.createTexture();
