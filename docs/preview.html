@@ -83,6 +83,13 @@ html{
      by half that. It looked like the drawer settling into place; it was the
      whole page moving under it. */
   scrollbar-gutter:stable;
+  /* The swipe-back/forward gesture is arbitrated by the outermost scroller
+     (html, not body), and Safari honours it there even when a handler further
+     in calls preventDefault() on the wheel event. Without this, a touchpad
+     swipe meant to drag the all-work carousel instead triggers browser Back -
+     which, thanks to closeCase's own pushState, lands right back on the case
+     that was just closed, so it looks like the card reopened itself. */
+  overscroll-behavior-x:none;
 }
 body{
   margin:0;
@@ -95,6 +102,7 @@ body{
   letter-spacing:var(--track);
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
+  overscroll-behavior-x:none;
 }
 body.is-locked{overflow:hidden;}
 h1,h2,h3,h4,p,figure,blockquote,dl,dd{margin:0;}
@@ -241,16 +249,24 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 /* The frame holds its place and the photograph scales inside it. The plate's
    right edge clears the work list by a couple of pixels, so growing the frame
    itself would drive it straight under the project names. .hero-preview already
-   clips, so the zoom stays in its box. */
-.hero-shot{position:absolute;inset:0;background:center/cover no-repeat;
-  opacity:0;transform:scale(1);pointer-events:none;
-  transition:opacity .42s var(--ease),transform .55s var(--ease);}
-.hero-shot.is-on{opacity:1;pointer-events:auto;cursor:pointer;}
+   clips, so the zoom stays in its box.
+   The reveal is a translateY slide rather than an animated clip-path: clip-path
+   repaints the actual pixels every frame, which got expensive once the plates
+   held detailed photos instead of the flat placeholder. transform is compositor
+   -only, so the slide costs nothing regardless of image detail. The zoom lives
+   on a nested .hero-shot-img so its own transform (scale) doesn't fight the
+   plate's translateY, and each can keep its own duration. */
+.hero-shot{position:absolute;inset:0;overflow:hidden;
+  transform:translateY(100%);pointer-events:none;
+  transition:transform .38s var(--ease);}
+.hero-shot.is-on{transform:translateY(0);pointer-events:auto;cursor:pointer;}
+.hero-shot-img{position:absolute;inset:0;background:center/cover no-repeat;
+  transform:scale(1);transition:transform .55s var(--ease);}
 /* The zoom belongs to the project names only - hovering the plate itself
    does nothing, .is-zoom is set by the name handler. The plate is still a
    click target though: only the visible one (.is-on) accepts pointer events,
    so a click always opens the case that is currently shown. */
-.hero-preview.is-zoom .hero-shot{transform:scale(1.2);}
+.hero-preview.is-zoom .hero-shot-img{transform:scale(1.2);}
 
 /* ---- work list ---- */
 .hero-work{
@@ -266,6 +282,11 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
    where iris reads at 4.6:1, and it is never under the cursor by definition. */
 .hero-work .is-on{color:var(--iris);mix-blend-mode:normal;}
 
+/* While one name is hovered/focused, the rest step back to the same muted
+   tone the lede uses (.inv-fog's #8d8e8f) so the hovered one reads as the
+   obvious focal point instead of five equal-weight labels. */
+.hero-work:has(a:hover,a:focus) a:not(:hover):not(:focus){color:#a8a8a8;}
+
 /* The hovered one is a different problem: the cursor is on it, so the wipe is
    on it, so it has to survive a dark backdrop. difference only guarantees
    contrast for a WHITE source — iris over the brighter parts of the photograph
@@ -277,6 +298,9 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   color:#ffffff;mix-blend-mode:difference;opacity:1;
   transform:translateX(-.38em);
 }
+/* The default focus-visible outline is redundant here - the colour swap and
+   nudge above already signal focus just as loudly. */
+.hero-work a:focus-visible{outline:none;}
 
 /* ---- bottom block ---- */
 .hero-title{
@@ -656,16 +680,16 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
    is budgeted to add up to well under 100cqh, so it always fits one
    screen with no page scroll, on short/landscape viewports too.
    ============================================================ */
-.cf{--cf-card:clamp(96px,min(26vw,38cqh),320px);width:100%;
+.cf{--cf-h:clamp(120px,min(31.5vw,39cqh),450px);--cf-w:calc(var(--cf-h) * 3 / 2);width:100%;
   padding-block:clamp(8px,4cqh,var(--s115)) clamp(6px,2.5cqh,var(--s63));}
 /* The arrows live in .cf-stage, one level above .cf-frame, on purpose: a
    perspective parent pulls any transformed child - even a plain 2D one like
    the arrows' translateY(-50%) - into its 3D scene and skews its position.
    Keeping them outside the perspective container sidesteps that entirely. */
 .cf-stage{position:relative;}
-.cf-frame{cursor:grab;overflow:hidden;
+.cf-frame{cursor:grab;overflow:hidden;overscroll-behavior-x:contain;
   padding-block:clamp(6px,3cqh,var(--s54));outline:none;touch-action:pan-y;
-  perspective:calc(var(--cf-card) * 3);
+  perspective:calc(var(--cf-w) * 3);
   /* The frame's own overflow:hidden clips the outermost cards with a hard
      edge - mask them out instead, so they dissolve into the page rather
      than getting cut off mid-card. */
@@ -673,8 +697,8 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   mask-image:linear-gradient(to right,transparent 0,#000 14%,#000 86%,transparent 100%);}
 .cf-frame:active{cursor:grabbing;}
 .cf-frame:focus-visible{box-shadow:var(--ring);border-radius:var(--r-card);}
-.cf-track{position:relative;height:var(--cf-card);transform-style:preserve-3d;}
-.cf-card{position:absolute;left:50%;top:0;aspect-ratio:1/1;width:var(--cf-card);
+.cf-track{position:relative;height:var(--cf-h);transform-style:preserve-3d;}
+.cf-card{position:absolute;left:50%;top:0;aspect-ratio:3/2;width:var(--cf-w);
   border-radius:var(--r-card);overflow:hidden;background:var(--surface);
   box-shadow:0 25px 50px rgba(20,20,22,.22);will-change:transform;cursor:pointer;}
 .cf-cover{width:100%;height:100%;background:var(--surface) center/cover no-repeat;}
@@ -737,11 +761,11 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
     <!-- preview plates. Each shows assets/work/<slug>.webp once the file exists;
          until then the surface colour shows through, no broken-image icon. -->
     <div class="hero-preview" id="heroPreview">
-      <div class="hero-shot" data-slug="parfee" data-case="parfee" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="fiducia" data-case="fiducia" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="textyourtenant" data-case="textyourtenant" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="dbmc" data-case="dbmc" style="background-image:url('assets/Project_preview.png')"></div>
-      <div class="hero-shot" data-slug="travellite" data-case="travellite" style="background-image:url('assets/Project_preview.png')"></div>
+      <div class="hero-shot" data-slug="parfee" data-case="parfee"><div class="hero-shot-img" style="background-image:url('assets/Project_preview.png')"></div></div>
+      <div class="hero-shot" data-slug="fiducia" data-case="fiducia"><div class="hero-shot-img" style="background-image:url('assets/Project_preview.png')"></div></div>
+      <div class="hero-shot" data-slug="textyourtenant" data-case="textyourtenant"><div class="hero-shot-img" style="background-image:url('assets/work/textyourtenant.jpg')"></div></div>
+      <div class="hero-shot" data-slug="dbmc" data-case="dbmc"><div class="hero-shot-img" style="background-image:url('assets/work/dbmc.jpg')"></div></div>
+      <div class="hero-shot" data-slug="travellite" data-case="travellite"><div class="hero-shot-img" style="background-image:url('assets/work/travellite.jpg')"></div></div>
     </div>
 
     <ul class="hero-work" id="heroWork">
@@ -989,7 +1013,7 @@ const CASES = [
     quote:{ t:'I can genuinely recommend Artjoms. He completely redesigned our dashboard with great attention to detail, communicated well throughout, and was always open to making adjustments when needed.', by:'Fiducia · Germany' }
   },
   {
-    id:'textyourtenant', num:'03', name:'TextYourTenant',
+    id:'textyourtenant', num:'03', name:'TextYourTenant', cover:'assets/work/textyourtenant.jpg',
     kicker:'Bulk SMS for property managers · USA',
     desc:'The handoff case — a design system engineers could implement without a translator.',
     tags:['SaaS','Responsive','Handoff'],
@@ -1017,7 +1041,7 @@ const CASES = [
     quote:{ t:'Artjoms was an absolute pleasure to work with… it was quickly apparent we were working with a senior designer. His design system was easy for our engineers to implement, he proactively asked key user experience questions, and had fast response times to questions and feedback.', by:'TextYourTenant · USA' }
   },
   {
-    id:'travellite', num:'04', name:'Travellite',
+    id:'travellite', num:'04', name:'Travellite', cover:'assets/work/travellite.jpg',
     kicker:'Tour search · Mobile app',
     desc:'An academic case study. Included because it is the only place you can see how I reason with no client in the room.',
     tags:['Concept project','Mobile','iOS + Android'],
@@ -1046,7 +1070,7 @@ const CASES = [
 ];
 
 const SUPPORTING = [
-  { id:'dbmc', num:'05', name:'DBMC', kicker:'Renovation estimator',
+  { id:'dbmc', num:'05', name:'DBMC', kicker:'Renovation estimator', cover:'assets/work/dbmc.jpg',
     desc:'A guided flow that walks a homeowner through estimating a renovation.', tags:['Product flow','Web'], shots:4 },
   { id:'xdose', num:'06', name:'Xdose', kicker:'E-commerce',
     desc:'Online store design, built with a product manager.', tags:['E-commerce','With a PM'], shots:4 },
@@ -1493,6 +1517,27 @@ function initCoverflow(container, items){
   frame.addEventListener('pointerup', endDrag);
   frame.addEventListener('pointercancel', endDrag);
 
+  /* Touchpad horizontal swipe (two-finger scroll) drives the same pos/target
+     as a pointer drag, live per wheel tick - no click-and-hold needed. Only
+     claims the gesture when it reads as horizontal, so an ordinary vertical
+     scroll on the page still passes through untouched. */
+  let wheelActive = false, wheelTimer = null;
+  frame.addEventListener('wheel', e => {
+    if(Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    const pitch = width * (1 + GAP);
+    if(!pitch) return;
+    e.preventDefault();
+    if(raf !== null){ cancelAnimationFrame(raf); raf = null; }
+    wheelActive = true;
+    pos += e.deltaX / pitch;
+    target = pos;
+    const i = indexAt(pos);
+    if(i !== selected){ selected = i; renderCaption(); }
+    paint();
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => { wheelActive = false; settle(Math.round(pos)); }, 120);
+  }, { passive: false });
+
   frame.addEventListener('keydown', e => {
     if(e.key === 'ArrowLeft'){ e.preventDefault(); nudge(-1); }
     else if(e.key === 'ArrowRight'){ e.preventDefault(); nudge(1); }
@@ -1718,11 +1763,11 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   /* How fast the surface closes back over — the trail's lifetime, and the
      only thing that controls it. Dye decays as exp(-DYE_DISS * t), so
      lifetime is proportional to 1/DYE_DISS: to cut the trail's life by 30%
-     the number goes UP by 1/0.7, not down by 0.3. 0.60 → 0.857 → 1.224,
-     two 30% cuts, half-life now ~0.44s of wall clock. This is independent
-     of SPEED — SPEED sets the pace of the whole effect, this sets how long
-     the ink survives at that pace. */
-  const DYE_DISS = 1.224;
+     the number goes UP by 1/0.7, not down by 0.3. 0.60 → 0.857 → 1.224 →
+     2.448, half-life now ~0.22s of wall clock (2x faster than the 0.44s it
+     used to be). This is independent of SPEED — SPEED sets the pace of the
+     whole effect, this sets how long the ink survives at that pace. */
+  const DYE_DISS = 2.448;
   const PRESSURE = 0.8;
   const ITER     = 18;      /* Jacobi iterations */
   const CURL     = 15;      /* vorticity confinement — the swirl */
@@ -1730,8 +1775,9 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
      radius goes as sqrt(RADIUS) — this number is an area, not a length.
      Making the cursor 40% smaller means multiplying by 0.6^2 = 0.36, not
      by 0.6: 0.32 -> 0.115. Scaling it linearly would have shrunk the spot
-     by only 22%. */
-  const RADIUS   = 0.115;
+     by only 22%. A 10% bigger visible radius means multiplying by 1.1^2 =
+     1.21: 0.115 -> 0.139. */
+  const RADIUS   = 0.139;
   /* The revealed photograph is dimmed before it becomes a texture. The
      difference blend that keeps the hero type readable resolves to
      |255 - backdrop|, so a backdrop near mid-grey renders text that is
@@ -2123,10 +2169,13 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   }
 
   /* cover-fit the photograph into a hero-sized canvas. This is also where the
-     4928px original stops being a 64MB texture: the upload is capped at 2048. */
+     4928px original stops being an oversized texture: the upload is capped at
+     3072 on the long edge, so wide hi-DPI heroes (4K desktops) still get the
+     full devicePixelRatio instead of being squeezed by a limit sized for
+     laptop viewports. */
   function paintReveal(w, h){
     if(!revealImg) return paintSchematic(w, h);
-    const scale = Math.min(Math.min(devicePixelRatio || 1, 2), 2048 / Math.max(w, h));
+    const scale = Math.min(Math.min(devicePixelRatio || 1, 2), 3072 / Math.max(w, h));
     const c = document.createElement('canvas');
     c.width  = Math.max(2, Math.round(w * scale));
     c.height = Math.max(2, Math.round(h * scale));

@@ -91,6 +91,13 @@ html{
      by half that. It looked like the drawer settling into place; it was the
      whole page moving under it. */
   scrollbar-gutter:stable;
+  /* The swipe-back/forward gesture is arbitrated by the outermost scroller
+     (html, not body), and Safari honours it there even when a handler further
+     in calls preventDefault() on the wheel event. Without this, a touchpad
+     swipe meant to drag the all-work carousel instead triggers browser Back -
+     which, thanks to closeCase's own pushState, lands right back on the case
+     that was just closed, so it looks like the card reopened itself. */
+  overscroll-behavior-x:none;
 }
 body{
   margin:0;
