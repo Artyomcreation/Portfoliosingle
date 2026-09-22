@@ -1627,8 +1627,10 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
 
 /* ============================================================
    HERO — WORK PREVIEW
-   Hovering a project name swaps the plate beside it. Fiducia is
-   the resting state, matching the artboard.
+   Hovering a project name swaps the plate beside it. Fiducia's
+   photo is the resting plate, matching the artboard - but the
+   NAME itself only turns iris while it is actually being hovered
+   or focused. It never carries a "default selected" look.
    ============================================================ */
 (function heroPreview(){
   const list = document.getElementById('heroWork');
@@ -1639,18 +1641,16 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   const plates = [...shots.querySelectorAll('.hero-shot')];
   const REST = 'fiducia';
 
-  function show(slug){
-    links.forEach(a => a.classList.toggle('is-on', a.dataset.slug === slug));
-    plates.forEach(p => p.classList.toggle('is-on', p.dataset.slug === slug));
-  }
+  const showPlate = slug => plates.forEach(p => p.classList.toggle('is-on', p.dataset.slug === slug));
+  const highlight  = slug => links.forEach(a => a.classList.toggle('is-on', slug != null && a.dataset.slug === slug));
   const zoom = on => shots.classList.toggle('is-zoom', on);
   links.forEach(a => {
-    a.addEventListener('pointerenter', () => { show(a.dataset.slug); zoom(true); });
-    a.addEventListener('focus',        () => { if(!suppressFocus) { show(a.dataset.slug); zoom(true); } });
-    a.addEventListener('blur',         () => zoom(false));
+    a.addEventListener('pointerenter', () => { showPlate(a.dataset.slug); highlight(a.dataset.slug); zoom(true); });
+    a.addEventListener('focus',        () => { if(!suppressFocus) { showPlate(a.dataset.slug); highlight(a.dataset.slug); zoom(true); } });
+    a.addEventListener('blur',         () => { highlight(null); zoom(false); });
   });
-  list.addEventListener('pointerleave', () => { show(REST); zoom(false); });
-  show(REST);
+  list.addEventListener('pointerleave', () => { showPlate(REST); highlight(null); zoom(false); });
+  showPlate(REST);
 
   /* The case drawer returns focus to the link that opened it when it closes,
      which would normally re-trigger the hover preview above and leave the
@@ -1661,9 +1661,17 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   window.heroPreviewRestoreFocus = el => {
     suppressFocus = true;
     el.focus();
-    show(REST);
+    showPlate(REST); highlight(null); zoom(false);
     suppressFocus = false;
   };
+
+  /* Back/forward navigation can restore the page from bfcache with whatever
+     hover/focus state it had when the user left - including a link mid
+     highlight. Force everything back to rest whenever the page is (re)shown. */
+  window.addEventListener('pageshow', () => {
+    if(document.activeElement && list.contains(document.activeElement)) document.activeElement.blur();
+    showPlate(REST); highlight(null); zoom(false);
+  });
 })();
 
 /* ============================================================
