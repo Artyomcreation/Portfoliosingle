@@ -319,19 +319,20 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 }
 /* Chromatic aberration under the cursor.
 
-   The script splits the line into two stacked copies of the same text: .t-base
-   is the line as drawn, .t-ab is the same line pushed through #heroChroma,
-   which offsets the R/G/B channels by about a pixel each. Inside a glyph the
-   three channels still add back to white, so only the edges pick up colour —
-   the letters read as very slightly mis-registered print, not as a glitch.
+   .hero-title-ab is a third copy of the line — same classes, so it lands in
+   the same grid cell with the same metrics — pushed through #heroFringe, which
+   keeps only the colour that spills past the glyph edges and throws the glyph
+   interior away. It lies over the real title, masked to a radius around
+   --cx/--cy (set on pointermove, px local to the title), so the fringe follows
+   the cursor and the rest of the line is left alone.
 
-   .t-ab is masked to a radius around --cx/--cy (set on pointermove, px local
-   to the title) and simply sits on top: the filter's output is opaque right
-   through the fringes, so it covers .t-base rather than mixing with it. The
-   plain copy underneath stays whole on purpose — punching a matching hole in
-   it would leave the ring where the two masks cross at a combined alpha below
-   1, and a part-transparent white glyph blends back through .inv's difference
-   as grey, which is visible as a smear when the cursor moves quickly. */
+   It deliberately sits outside .inv rather than inside the h1. The title
+   paints white in difference blend, so anything in that group shows up as the
+   inverse of what it paints — and that inverse flips a second time wherever
+   the wipe turns the backdrop black. That is where the cyan was coming from:
+   the copy that had to be painted cyan to read red over the light canvas read
+   cyan again, literally, the moment the wipe went dark underneath it. Out here
+   the floods are literal and blue, yellow and red hold over either state. */
 /* Hard black/white inversion.
 
    The title is white glyphs in difference blend, so its colour is just the
@@ -356,13 +357,14 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   -webkit-mask-clip:text;
   mask-clip:text;
 }
-.hero-title .t-ab{
-  position:absolute;inset:0;
+.hero-title-ab{
+  z-index:4;                      /* over the type, which sits at 3 */
+  color:#ffffff;                  /* only its alpha reaches the filter */
   pointer-events:none;
   opacity:0;
-  filter:url(#heroChroma);
+  filter:url(#heroFringe);
 }
-.hero-title.is-chroma .t-ab{
+.hero-title-ab.is-chroma{
   opacity:1;
   -webkit-mask-image:radial-gradient(circle var(--cr,90px) at var(--cx,50%) var(--cy,50%),#000 0%,#000 40%,transparent 100%);
   mask-image:radial-gradient(circle var(--cr,90px) at var(--cx,50%) var(--cy,50%),#000 0%,#000 40%,transparent 100%);
@@ -795,24 +797,41 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 </head>
 <body>
 
-<!-- Channel split for the hero title's chromatic fringe. Three sub-pixel copies
-     of the glyphs, each missing a channel, screened back into white where they
-     overlap so only the edges keep colour.
+<!-- Fringe-only channel split for the hero title.
 
-     The channels look inverted here on purpose: the title paints white through
-     .inv's difference blend, so on the page's light background every fringe
-     comes out as its opposite. Cyan reads red, yellow reads blue, blue reads
-     yellow — which is the red/blue/yellow the effect is after. -->
+     Each of the three offsets is composited "out" against the untouched glyph
+     alpha, which leaves only the sliver that sticks out past the edge, and the
+     sliver is then filled with a flat accent. Nothing paints inside the glyph,
+     so the copy can lie straight over the real title without covering it.
+
+     The accents are named outright rather than left to come out of channel
+     arithmetic — that is what keeps them off the difference blend's inversion,
+     and it makes the hues a value to tune rather than whatever pure R/G/B
+     happen to land on. A hair of blur stops the slivers reading as stickers. -->
 <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
-  <filter id="heroChroma" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
-    <feOffset in="SourceGraphic" dx="-1.1" dy="0"   result="oL"/>
-    <feOffset in="SourceGraphic" dx="1.1"  dy="0"   result="oR"/>
-    <feOffset in="SourceGraphic" dx="0"    dy="0.97" result="oD"/>
-    <feColorMatrix in="oL" result="cL" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
-    <feColorMatrix in="oR" result="cR" values="1 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
-    <feColorMatrix in="oD" result="cD" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
-    <feBlend in="cL" in2="cR" mode="screen" result="cLR"/>
-    <feBlend in="cLR" in2="cD" mode="screen"/>
+  <filter id="heroFringe" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+    <feOffset in="SourceAlpha" dx="-1.1" dy="0"    result="oL"/>
+    <feOffset in="SourceAlpha" dx="1.1"  dy="0"    result="oR"/>
+    <feOffset in="SourceAlpha" dx="0"    dy="0.97" result="oD"/>
+
+    <feComposite in="oL" in2="SourceAlpha" operator="out" result="eL"/>
+    <feComposite in="oR" in2="SourceAlpha" operator="out" result="eR"/>
+    <feComposite in="oD" in2="SourceAlpha" operator="out" result="eD"/>
+
+    <feFlood flood-color="#1B4DFF" result="pL"/>
+    <feFlood flood-color="#FF2D1A" result="pR"/>
+    <feFlood flood-color="#FFC400" result="pD"/>
+
+    <feComposite in="pL" in2="eL" operator="in" result="fL"/>
+    <feComposite in="pR" in2="eR" operator="in" result="fR"/>
+    <feComposite in="pD" in2="eD" operator="in" result="fD"/>
+
+    <feMerge result="fringe">
+      <feMergeNode in="fL"/>
+      <feMergeNode in="fR"/>
+      <feMergeNode in="fD"/>
+    </feMerge>
+    <feGaussianBlur stdDeviation="0.35"/>
   </filter>
 </svg>
 
@@ -2439,26 +2458,25 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
   if(!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
 
-  const text = title.textContent.trim();
-  const base = document.createElement('span');
-  const ab   = document.createElement('span');
-  base.className = 't-base'; base.textContent = text;
-  ab.className   = 't-ab';   ab.textContent   = text;
+  /* same classes as the title for the same grid cell and metrics, but without
+     .inv — the fringe colours are literal and must stay out of the blend */
+  const ab = document.createElement('div');
+  ab.className = 'hero-title hero-title-ab';
   ab.setAttribute('aria-hidden', 'true');
-  title.textContent = '';
-  title.append(base, ab);
+  ab.textContent = title.textContent.trim();
+  title.after(ab);
 
   const track = e => {
     const r = title.getBoundingClientRect();
-    title.style.setProperty('--cx', (e.clientX - r.left) + 'px');
-    title.style.setProperty('--cy', (e.clientY - r.top) + 'px');
+    ab.style.setProperty('--cx', (e.clientX - r.left) + 'px');
+    ab.style.setProperty('--cy', (e.clientY - r.top) + 'px');
   };
 
   title.addEventListener('pointermove', track, { passive:true });
-  /* the mask has to be in place before the class lands, or the punch-out
-     shows up wherever the cursor happened to leave it last time */
-  title.addEventListener('pointerenter', e => { track(e); title.classList.add('is-chroma'); }, { passive:true });
-  title.addEventListener('pointerleave', () => title.classList.remove('is-chroma'), { passive:true });
+  /* the mask has to be in place before the class lands, or the fringe shows up
+     wherever the cursor happened to leave it last time */
+  title.addEventListener('pointerenter', e => { track(e); ab.classList.add('is-chroma'); }, { passive:true });
+  title.addEventListener('pointerleave', () => ab.classList.remove('is-chroma'), { passive:true });
 })();
 </script>
 </body>
