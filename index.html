@@ -332,6 +332,30 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
    copy under the aberrated one would fill the fringes back in with white and
    leave nothing to see. .inv's difference blend stays on the h1 itself, so it
    applies once to the pair and the title still reads over the fluid wipe. */
+/* Hard black/white inversion.
+
+   The title is white glyphs in difference blend, so its colour is just the
+   inverse of whatever is behind it — which means the fluid wipe drifting in
+   under a letter walks it through every grey on the way from black to white.
+   This layer sits between the wipe and the text and pushes the backdrop to
+   pure black or pure white first, so the letters only ever have two states
+   and flip the instant the wipe crosses them.
+
+   It is a copy of the line with mask-clip:text, so the threshold is clipped
+   to the glyph shapes and the wipe stays soft everywhere around them. It has
+   to be below the h1 rather than over it: thresholding the rendered letters
+   would take their antialiased edges with it and leave the type ragged. */
+.hero-title-thresh{
+  z-index:2;                      /* over the wipe canvas, under the text */
+  color:transparent;
+  pointer-events:none;
+  -webkit-backdrop-filter:grayscale(1) contrast(36);
+  backdrop-filter:grayscale(1) contrast(36);
+  -webkit-mask-image:linear-gradient(#000,#000);
+  mask-image:linear-gradient(#000,#000);
+  -webkit-mask-clip:text;
+  mask-clip:text;
+}
 .hero-title .t-ab{
   position:absolute;inset:0;
   pointer-events:none;
@@ -2400,9 +2424,21 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); cancelAnimationFrame(raf); bail(); });
 })();
 
-/* ---------- hero title chromatic hover ---------- */
-(function heroTitleChroma(){
+/* ---------- hero title: hard inversion + chromatic hover ---------- */
+(function heroTitleThreshold(){
   const title = document.querySelector('.hero-title');
+  if(!title) return;
+  /* same classes, so it lands in the same grid cell with the same type
+     metrics and its glyphs line up with the real ones */
+  const thresh = document.createElement('div');
+  thresh.className = 'hero-title hero-title-thresh';
+  thresh.setAttribute('aria-hidden', 'true');
+  thresh.textContent = title.textContent.trim();
+  title.before(thresh);
+})();
+
+(function heroTitleChroma(){
+  const title = document.querySelector('.hero-title:not(.hero-title-thresh)');
   if(!title) return;
   if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
   if(!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
