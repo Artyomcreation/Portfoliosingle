@@ -325,13 +325,13 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
    three channels still add back to white, so only the edges pick up colour —
    the letters read as very slightly mis-registered print, not as a glitch.
 
-   The two copies carry complementary radial masks centred on --cx/--cy (set on
-   pointermove, px local to the title): .t-base is punched out under the
-   cursor, .t-ab shows only there, so their alphas sum to 1 everywhere and no
-   seam appears. They have to swap rather than stack — overlaying the plain
-   copy under the aberrated one would fill the fringes back in with white and
-   leave nothing to see. .inv's difference blend stays on the h1 itself, so it
-   applies once to the pair and the title still reads over the fluid wipe. */
+   .t-ab is masked to a radius around --cx/--cy (set on pointermove, px local
+   to the title) and simply sits on top: the filter's output is opaque right
+   through the fringes, so it covers .t-base rather than mixing with it. The
+   plain copy underneath stays whole on purpose — punching a matching hole in
+   it would leave the ring where the two masks cross at a combined alpha below
+   1, and a part-transparent white glyph blends back through .inv's difference
+   as grey, which is visible as a smear when the cursor moves quickly. */
 /* Hard black/white inversion.
 
    The title is white glyphs in difference blend, so its colour is just the
@@ -361,10 +361,6 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   pointer-events:none;
   opacity:0;
   filter:url(#heroChroma);
-}
-.hero-title.is-chroma .t-base{
-  -webkit-mask-image:radial-gradient(circle var(--cr,90px) at var(--cx,50%) var(--cy,50%),transparent 0%,transparent 40%,#000 100%);
-  mask-image:radial-gradient(circle var(--cr,90px) at var(--cx,50%) var(--cy,50%),transparent 0%,transparent 40%,#000 100%);
 }
 .hero-title.is-chroma .t-ab{
   opacity:1;
@@ -809,9 +805,9 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
      yellow — which is the red/blue/yellow the effect is after. -->
 <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
   <filter id="heroChroma" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
-    <feOffset in="SourceGraphic" dx="-0.8" dy="0"   result="oL"/>
-    <feOffset in="SourceGraphic" dx="0.8"  dy="0"   result="oR"/>
-    <feOffset in="SourceGraphic" dx="0"    dy="0.7" result="oD"/>
+    <feOffset in="SourceGraphic" dx="-0.96" dy="0"    result="oL"/>
+    <feOffset in="SourceGraphic" dx="0.96"  dy="0"    result="oR"/>
+    <feOffset in="SourceGraphic" dx="0"     dy="0.84" result="oD"/>
     <feColorMatrix in="oL" result="cL" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
     <feColorMatrix in="oR" result="cR" values="1 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"/>
     <feColorMatrix in="oD" result="cD" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
