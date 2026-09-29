@@ -1816,8 +1816,34 @@ const clockEl = document.getElementById('clock');
 const fmt = new Intl.DateTimeFormat('en-GB',{
   hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Europe/Riga'
 });
+/* Riga's UTC offset in minutes, read off the zone itself so the tooltip's
+   gap to the visitor follows DST on both ends */
+const rigaParts = new Intl.DateTimeFormat('en-US',{
+  timeZone:'Europe/Riga',hourCycle:'h23',
+  year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric'
+});
+function rigaOffset(d){
+  const p = {};
+  for (const {type,value} of rigaParts.formatToParts(d)) p[type] = +value;
+  const asUTC = Date.UTC(p.year,p.month - 1,p.day,p.hour,p.minute);
+  return Math.round((asUTC - Math.floor(d / 60000) * 60000) / 60000);
+}
+function span(min){
+  const h = Math.floor(min / 60), m = min % 60;
+  return h && m ? `${h}h ${m}m` : m ? `${m}m` : `${h}h`;
+}
+let lastDiff = null;
 (function tick(){
-  clockEl.textContent = fmt.format(new Date());
+  const now = new Date();
+  clockEl.textContent = fmt.format(now);
+  const diff = rigaOffset(now) + now.getTimezoneOffset();   // Riga minus the visitor
+  if (diff !== lastDiff){
+    lastDiff = diff;
+    clockEl.title = 'Local time in Riga · ' + (
+      diff === 0 ? 'same as yours'
+      : `${span(Math.abs(diff))} ${diff > 0 ? 'ahead of' : 'behind'} you`
+    );
+  }
   setTimeout(tick, 1000);
 })();
 
