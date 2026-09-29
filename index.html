@@ -227,6 +227,29 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   display:flex;flex-wrap:wrap;gap:clamp(10px,.94vw,18px);font-size:var(--t-hero-meta);}
 .hero-nav a{transition:opacity .2s var(--ease);}
 .hero-nav a:hover{opacity:.55;}
+/* "Download CV" everywhere, for now. No href, so it's already out of the tab
+   order; this drops the hover fade too */
+a.is-disabled{pointer-events:none;cursor:default;}
+/* "Contact" copies the address instead of navigating — here and in the
+   about / all-work navs, which share these classes. The confirmation hangs
+   under the link, out of flow so the nav doesn't reflow. It is the link's
+   sibling, not its child: inside the <a> it would join the difference blend
+   and iris would come out as its inverse (a yellow). The wrapper is
+   position:relative with no z-index, so it anchors the tip without becoming
+   a stacking context — the link inside still blends against the canvas. */
+.copy-wrap{position:relative;}
+.copy-tip{
+  position:absolute;left:0;top:calc(100% + 4px);z-index:3;   /* over the wipe */
+  display:flex;align-items:center;gap:4px;
+  white-space:nowrap;font-size:var(--t-hero-meta-sm);color:var(--iris);
+  opacity:0;transform:translateY(-3px);pointer-events:none;
+  transition:opacity .2s var(--ease),transform .2s var(--ease);
+}
+.copy-tip.is-on{opacity:1;transform:none;}
+.copy-tip svg{
+  width:1em;height:1em;flex:none;
+  fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+}
 
 /* ---- portrait ---- */
 .hero-portrait{grid-column:1;grid-row:1 / 3;align-self:start;margin:0;}
@@ -865,8 +888,12 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
     <nav class="hero-nav" aria-label="Primary">
       <a class="inv" href="#/work">All work</a>
       <a class="inv" href="#about">About</a>
-      <a class="inv" href="#contact">Contact</a>
-      <a class="inv" href="#" download>Download CV</a>
+      <span class="copy-wrap">
+        <a class="inv copy-email" href="mailto:Artjoms.Suslovs@gmail.com" data-email="Artjoms.Suslovs@gmail.com">Contact</a>
+        <span class="copy-tip" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span class="copy-msg"></span></span>
+      </span>
+      <!-- disabled until the CV is ready: restore href="…" download to enable -->
+      <a class="inv is-disabled" aria-disabled="true">Download CV</a>
     </nav>
 
     <!-- preview plates. No background on the frame: mid-transition the page
@@ -927,8 +954,12 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
         <nav class="about-nav" aria-label="About page">
           <a class="about-exit" href="#/work">All work</a>
           <span aria-current="page">About</span>
-          <a class="about-exit" href="#contact">Contact</a>
-          <a href="#" download>Download CV</a>
+          <span class="copy-wrap">
+            <a class="copy-email" href="mailto:Artjoms.Suslovs@gmail.com" data-email="Artjoms.Suslovs@gmail.com">Contact</a>
+            <span class="copy-tip" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span class="copy-msg"></span></span>
+          </span>
+          <!-- disabled until the CV is ready: restore href="…" download to enable -->
+          <a class="is-disabled" aria-disabled="true">Download CV</a>
         </nav>
       </div>
 
@@ -1003,8 +1034,12 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
         <nav class="about-nav" aria-label="All work page">
           <span aria-current="page">All work</span>
           <a href="#about">About</a>
-          <a class="work-exit" href="#contact">Contact</a>
-          <a class="work-exit" href="#" download>Download CV</a>
+          <span class="copy-wrap">
+            <a class="copy-email" href="mailto:Artjoms.Suslovs@gmail.com" data-email="Artjoms.Suslovs@gmail.com">Contact</a>
+            <span class="copy-tip" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span class="copy-msg"></span></span>
+          </span>
+          <!-- disabled until the CV is ready: restore href="…" download to enable -->
+          <a class="is-disabled" aria-disabled="true">Download CV</a>
         </nav>
       </div>
 
@@ -2467,6 +2502,46 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   ledeThresh.setAttribute('aria-hidden', 'true');
   ledeThresh.textContent = lede.textContent.trim();
   lede.before(ledeThresh);
+})();
+
+/* ---------- "Contact" (hero, about, all work): copy the address ---------- */
+(function copyEmail(){
+  /* navigator.clipboard needs a secure context; the textarea route covers
+     plain-http previews. If both fail the click falls through to mailto. */
+  const copy = async email => {
+    try{ await navigator.clipboard.writeText(email); return true; }
+    catch(_){
+      const ta = document.createElement('textarea');
+      ta.value = email;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+      document.body.append(ta);
+      ta.select();
+      let ok = false;
+      try{ ok = document.execCommand('copy'); }catch(_){}
+      ta.remove();
+      return ok;
+    }
+  };
+
+  document.querySelectorAll('.copy-email').forEach(link => {
+    const tip = link.parentElement.querySelector('.copy-tip');
+    const msg = tip.querySelector('.copy-msg');
+    let timer;
+
+    link.addEventListener('click', async e => {
+      e.preventDefault();
+      if(!(await copy(link.dataset.email))){ location.href = link.href; return; }
+      msg.textContent = 'Email copied';
+      tip.classList.add('is-on');
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        tip.classList.remove('is-on');
+        /* emptied once faded, so the next copy is announced again */
+        timer = setTimeout(() => { msg.textContent = ''; }, 200);
+      }, 1800);
+    });
+  });
 })();
 
 (function heroTitleChroma(){
