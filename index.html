@@ -2287,7 +2287,7 @@ let lastDiff = null;
     return c;
   }
 
-  /* assets/Hero_background.jpg -
+  /* assets/narrow-road-along-neon-billboards-built-structures.jpg -
      the layer the cursor uncovers. Until it has loaded (or if it fails) the
      procedural schematic below stands in, so the effect is never blank. */
   let revealImg = null, portraitImg = null;
@@ -2298,7 +2298,7 @@ let lastDiff = null;
     im.onload = () => { set(im); if(velocity) refreshReveal(); };
     im.src = src;
   }
-  loadInto('assets/Hero_background.jpg', im => revealImg = im);
+  loadInto('assets/narrow-road-along-neon-billboards-built-structures.jpg', im => revealImg = im);
   loadInto('assets/Profile_picture.png',  im => portraitImg = im);
 
   const revealTex = gl.createTexture();
