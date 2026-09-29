@@ -219,6 +219,29 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   display:flex;flex-wrap:wrap;gap:clamp(10px,.94vw,18px);font-size:var(--t-hero-meta);}
 .hero-nav a{transition:opacity .2s var(--ease);}
 .hero-nav a:hover{opacity:.55;}
+/* "Download CV" everywhere, for now. No href, so it's already out of the tab
+   order; this drops the hover fade too */
+a.is-disabled{pointer-events:none;cursor:default;}
+/* "Contact" copies the address instead of navigating — here and in the
+   about / all-work navs, which share these classes. The confirmation hangs
+   under the link, out of flow so the nav doesn't reflow. It is the link's
+   sibling, not its child: inside the <a> it would join the difference blend
+   and iris would come out as its inverse (a yellow). The wrapper is
+   position:relative with no z-index, so it anchors the tip without becoming
+   a stacking context — the link inside still blends against the canvas. */
+.copy-wrap{position:relative;}
+.copy-tip{
+  position:absolute;left:0;top:calc(100% + 4px);z-index:3;   /* over the wipe */
+  display:flex;align-items:center;gap:4px;
+  white-space:nowrap;font-size:var(--t-hero-meta-sm);color:var(--iris);
+  opacity:0;transform:translateY(-3px);pointer-events:none;
+  transition:opacity .2s var(--ease),transform .2s var(--ease);
+}
+.copy-tip.is-on{opacity:1;transform:none;}
+.copy-tip svg{
+  width:1em;height:1em;flex:none;
+  fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+}
 
 /* ---- portrait ---- */
 .hero-portrait{grid-column:1;grid-row:1 / 3;align-self:start;margin:0;}
@@ -244,29 +267,21 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   grid-column:3;grid-row:2;align-self:center;margin-top:clamp(0px,3.5svh,38px);
   position:relative;aspect-ratio:451 / 300;   /* the artboard's slot. Note this crops
                                                 a 808x632 asset by 15% of its height */
-  background:var(--surface);overflow:hidden;
+  overflow:hidden;
 }
-/* The frame holds its place and the photograph scales inside it. The plate's
-   right edge clears the work list by a couple of pixels, so growing the frame
-   itself would drive it straight under the project names. .hero-preview already
-   clips, so the zoom stays in its box.
-   The reveal is a translateY slide rather than an animated clip-path: clip-path
+/* The reveal is a translateY slide rather than an animated clip-path: clip-path
    repaints the actual pixels every frame, which got expensive once the plates
    held detailed photos instead of the flat placeholder. transform is compositor
-   -only, so the slide costs nothing regardless of image detail. The zoom lives
-   on a nested .hero-shot-img so its own transform (scale) doesn't fight the
-   plate's translateY, and each can keep its own duration. */
-.hero-shot{position:absolute;inset:0;overflow:hidden;
+   -only, so the slide costs nothing regardless of image detail.
+   The incoming plate is lifted above the outgoing one, otherwise a plate later
+   in the DOM would sink on top of an earlier one rising and hide it.
+   Only the visible plate (.is-on) accepts pointer events, so a click always
+   opens the case that is currently shown. */
+.hero-shot{position:absolute;inset:0;overflow:hidden;z-index:1;
   transform:translateY(100%);pointer-events:none;
-  transition:transform .38s var(--ease);}
-.hero-shot.is-on{transform:translateY(0);pointer-events:auto;cursor:pointer;}
-.hero-shot-img{position:absolute;inset:0;background:center/cover no-repeat;
-  transform:scale(1);transition:transform .55s var(--ease);}
-/* The zoom belongs to the project names only - hovering the plate itself
-   does nothing, .is-zoom is set by the name handler. The plate is still a
-   click target though: only the visible one (.is-on) accepts pointer events,
-   so a click always opens the case that is currently shown. */
-.hero-preview.is-zoom .hero-shot-img{transform:scale(1.2);}
+  transition:transform .7s var(--ease-modal);}
+.hero-shot.is-on{z-index:2;transform:translateY(0);pointer-events:auto;cursor:pointer;}
+.hero-shot-img{position:absolute;inset:0;background:center/cover no-repeat;}
 
 /* ---- work list ---- */
 .hero-work{
@@ -304,13 +319,83 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 
 /* ---- bottom block ---- */
 .hero-title{
+  position:relative;
   grid-column:1 / 3;grid-row:3;
   font-size:var(--t-hero-title);font-weight:700;line-height:1.08;letter-spacing:-.02em;
   max-width:20ch;                 /* holds the artboard's three-line break */
 }
+/* Chromatic aberration under the cursor.
+
+   .hero-title-ab is a third copy of the line — same classes, so it lands in
+   the same grid cell with the same metrics — pushed through #heroFringe, which
+   keeps only the colour that spills past the glyph edges and throws the glyph
+   interior away. It lies over the real title, masked to a radius around
+   --cx/--cy (set on pointermove, px local to the title), so the fringe follows
+   the cursor and the rest of the line is left alone.
+
+   It deliberately sits outside .inv rather than inside the h1. The title
+   paints white in difference blend, so anything in that group shows up as the
+   inverse of what it paints — and that inverse flips a second time wherever
+   the wipe turns the backdrop black. That is where the cyan was coming from:
+   the copy that had to be painted cyan to read red over the light canvas read
+   cyan again, literally, the moment the wipe went dark underneath it. Out here
+   the floods are literal and blue, yellow and red hold over either state. */
+/* Hard black/white inversion.
+
+   The title is white glyphs in difference blend, so its colour is just the
+   inverse of whatever is behind it — which means the fluid wipe drifting in
+   under a letter walks it through every grey on the way from black to white.
+   This layer sits between the wipe and the text and pushes the backdrop to
+   pure black or pure white first, so the letters only ever have two states
+   and flip the instant the wipe crosses them.
+
+   It is a copy of the line with mask-clip:text, so the threshold is clipped
+   to the glyph shapes and the wipe stays soft everywhere around them. It has
+   to be below the h1 rather than over it: thresholding the rendered letters
+   would take their antialiased edges with it and leave the type ragged. */
+.hero-title-thresh{
+  z-index:2;                      /* over the wipe canvas, under the text */
+  color:transparent;
+  pointer-events:none;
+  -webkit-backdrop-filter:grayscale(1) contrast(36);
+  backdrop-filter:grayscale(1) contrast(36);
+  -webkit-mask-image:linear-gradient(#000,#000);
+  mask-image:linear-gradient(#000,#000);
+  -webkit-mask-clip:text;
+  mask-clip:text;
+}
+.hero-title-ab{
+  z-index:4;                      /* over the type, which sits at 3 */
+  color:#ffffff;                  /* only its alpha reaches the filter */
+  pointer-events:none;
+  opacity:0;
+  filter:url(#heroFringe);
+}
+.hero-title-ab.is-chroma{
+  opacity:1;
+  -webkit-mask-image:radial-gradient(circle var(--cr,90px) at var(--cx,50%) var(--cy,50%),#000 0%,#000 40%,transparent 100%);
+  mask-image:radial-gradient(circle var(--cr,90px) at var(--cx,50%) var(--cy,50%),#000 0%,#000 40%,transparent 100%);
+}
 .hero-lede{
   grid-column:3 / 5;grid-row:3;align-self:end;
   font-size:var(--t-hero-meta);line-height:1.53;
+}
+/* Same hard flip as the title, minus the fringe. The lede used to be .inv-fog,
+   which over the wipe only climbs to a mid grey (|15-141| = 126). It is now
+   white in difference like the title, over a thresholded copy of itself —
+   but the threshold is dimmed to 157 instead of pure white, so at rest the
+   type still lands on the fog grey (|157-255| = 98) and only the wipe, which
+   the threshold snaps to 0, turns it white. */
+.hero-lede-thresh{
+  z-index:2;                      /* over the wipe canvas, under the text */
+  color:transparent;
+  pointer-events:none;
+  -webkit-backdrop-filter:grayscale(1) contrast(36) brightness(.616);
+  backdrop-filter:grayscale(1) contrast(36) brightness(.616);
+  -webkit-mask-image:linear-gradient(#000,#000);
+  mask-image:linear-gradient(#000,#000);
+  -webkit-mask-clip:text;
+  mask-clip:text;
 }
 
 /* ---- narrow: one column, same order ---- */
@@ -589,10 +674,18 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 .about-topbar{position:sticky;top:0;z-index:2;background:var(--canvas);
   display:flex;align-items:center;justify-content:space-between;gap:var(--s22);flex-wrap:wrap;
   padding-block:var(--s22);border-bottom:1px solid var(--hair-soft);}
-.back-btn{display:inline-flex;align-items:center;gap:var(--s8);font-size:var(--t-meta);
+/* Set exactly like the nav on the other end of the bar — same size, ink and
+   hover fade — so the bar reads as one line of type rather than a control
+   plus a menu. The arrow is a hairline stroke in currentColor instead of a
+   filled Material glyph, and the hover nudge points it back the way it goes. */
+.back-btn{display:inline-flex;align-items:center;gap:6px;
+  font-size:var(--t-hero-meta-sm);color:var(--ink);
   transition:opacity .2s var(--ease);}
 .back-btn:hover{opacity:.6;}
-.back-btn img{display:block;width:24px;height:24px;}
+.back-btn svg{display:block;width:1em;height:1em;flex:none;
+  fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;
+  transition:transform .2s var(--ease);}
+.back-btn:hover svg{transform:translateX(-3px);}
 .about-nav{display:flex;flex-wrap:wrap;gap:clamp(10px,.94vw,18px);font-size:var(--t-hero-meta-sm);}
 .about-nav a{transition:opacity .2s var(--ease);}
 .about-nav a:hover{opacity:.6;}
@@ -733,6 +826,44 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
     transition-duration:.001ms !important;scroll-behavior:auto !important;}
 }
 </style>
+<!-- Fringe-only channel split for the hero title.
+
+     Each of the three offsets is composited "out" against the untouched glyph
+     alpha, which leaves only the sliver that sticks out past the edge, and the
+     sliver is then filled with a flat accent. Nothing paints inside the glyph,
+     so the copy can lie straight over the real title without covering it.
+
+     The accents are named outright rather than left to come out of channel
+     arithmetic — that is what keeps them off the difference blend's inversion,
+     and it makes the hues a value to tune rather than whatever pure R/G/B
+     happen to land on. A hair of blur stops the slivers reading as stickers. -->
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <filter id="heroFringe" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+    <feOffset in="SourceAlpha" dx="-1.1" dy="0"    result="oL"/>
+    <feOffset in="SourceAlpha" dx="1.1"  dy="0"    result="oR"/>
+    <feOffset in="SourceAlpha" dx="0"    dy="0.97" result="oD"/>
+
+    <feComposite in="oL" in2="SourceAlpha" operator="out" result="eL"/>
+    <feComposite in="oR" in2="SourceAlpha" operator="out" result="eR"/>
+    <feComposite in="oD" in2="SourceAlpha" operator="out" result="eD"/>
+
+    <feFlood flood-color="#1B4DFF" result="pL"/>
+    <feFlood flood-color="#FF2D1A" result="pR"/>
+    <feFlood flood-color="#FFC400" result="pD"/>
+
+    <feComposite in="pL" in2="eL" operator="in" result="fL"/>
+    <feComposite in="pR" in2="eR" operator="in" result="fR"/>
+    <feComposite in="pD" in2="eD" operator="in" result="fD"/>
+
+    <feMerge result="fringe">
+      <feMergeNode in="fL"/>
+      <feMergeNode in="fR"/>
+      <feMergeNode in="fD"/>
+    </feMerge>
+    <feGaussianBlur stdDeviation="0.35"/>
+  </filter>
+</svg>
+
 <!-- ============================ HERO ============================ -->
 <header class="hero" id="top">
 
@@ -754,12 +885,16 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
     <nav class="hero-nav" aria-label="Primary">
       <a class="inv" href="#/work">All work</a>
       <a class="inv" href="#about">About</a>
-      <a class="inv" href="#contact">Contact</a>
-      <a class="inv" href="#" download>Download CV</a>
+      <span class="copy-wrap">
+        <a class="inv copy-email" href="mailto:Artjoms.Suslovs@gmail.com" data-email="Artjoms.Suslovs@gmail.com">Contact</a>
+        <span class="copy-tip" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span class="copy-msg"></span></span>
+      </span>
+      <!-- disabled until the CV is ready: restore href="…" download to enable -->
+      <a class="inv is-disabled" aria-disabled="true">Download CV</a>
     </nav>
 
-    <!-- preview plates. Each shows assets/work/<slug>.webp once the file exists;
-         until then the surface colour shows through, no broken-image icon. -->
+    <!-- preview plates. No background on the frame: mid-transition the page
+         shows through instead of a grey box. -->
     <div class="hero-preview" id="heroPreview">
       <div class="hero-shot" data-slug="parfee" data-case="parfee"><div class="hero-shot-img" style="background-image:url('assets/Project_preview.png')"></div></div>
       <div class="hero-shot" data-slug="fiducia" data-case="fiducia"><div class="hero-shot-img" style="background-image:url('assets/Project_preview.png')"></div></div>
@@ -778,7 +913,7 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 
     <h1 class="hero-title inv">I design multi-role systems where the state is complex and the interface can't be.</h1>
 
-    <p class="hero-lede inv-fog">
+    <p class="hero-lede inv">
       For four years I've taken MVPs from research through UI and design system to developer
       handoff — SaaS dashboards, multi-role admin panels, mobile apps and e-commerce, for
       clients across Europe and the US. Most of that work is the operational side of a product:
@@ -810,14 +945,18 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 
       <div class="about-topbar pad">
         <button class="back-btn" id="aboutBack" type="button">
-          <img src="assets/material-symbols-light_arrow-circle-left.svg" alt="" width="24" height="24">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3.5M7.5 4 3.5 8l4 4"/></svg>
           <span>Back</span>
         </button>
         <nav class="about-nav" aria-label="About page">
           <a class="about-exit" href="#/work">All work</a>
           <span aria-current="page">About</span>
-          <a class="about-exit" href="#contact">Contact</a>
-          <a href="#" download>Download CV</a>
+          <span class="copy-wrap">
+            <a class="copy-email" href="mailto:Artjoms.Suslovs@gmail.com" data-email="Artjoms.Suslovs@gmail.com">Contact</a>
+            <span class="copy-tip" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span class="copy-msg"></span></span>
+          </span>
+          <!-- disabled until the CV is ready: restore href="…" download to enable -->
+          <a class="is-disabled" aria-disabled="true">Download CV</a>
         </nav>
       </div>
 
@@ -886,14 +1025,18 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 
       <div class="about-topbar pad">
         <button class="back-btn" id="workBack" type="button">
-          <img src="assets/material-symbols-light_arrow-circle-left.svg" alt="" width="24" height="24">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3.5M7.5 4 3.5 8l4 4"/></svg>
           <span>Back</span>
         </button>
         <nav class="about-nav" aria-label="All work page">
           <span aria-current="page">All work</span>
           <a href="#about">About</a>
-          <a class="work-exit" href="#contact">Contact</a>
-          <a class="work-exit" href="#" download>Download CV</a>
+          <span class="copy-wrap">
+            <a class="copy-email" href="mailto:Artjoms.Suslovs@gmail.com" data-email="Artjoms.Suslovs@gmail.com">Contact</a>
+            <span class="copy-tip" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg><span class="copy-msg"></span></span>
+          </span>
+          <!-- disabled until the CV is ready: restore href="…" download to enable -->
+          <a class="is-disabled" aria-disabled="true">Download CV</a>
         </nav>
       </div>
 
@@ -1670,8 +1813,34 @@ const clockEl = document.getElementById('clock');
 const fmt = new Intl.DateTimeFormat('en-GB',{
   hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Europe/Riga'
 });
+/* Riga's UTC offset in minutes, read off the zone itself so the tooltip's
+   gap to the visitor follows DST on both ends */
+const rigaParts = new Intl.DateTimeFormat('en-US',{
+  timeZone:'Europe/Riga',hourCycle:'h23',
+  year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric'
+});
+function rigaOffset(d){
+  const p = {};
+  for (const {type,value} of rigaParts.formatToParts(d)) p[type] = +value;
+  const asUTC = Date.UTC(p.year,p.month - 1,p.day,p.hour,p.minute);
+  return Math.round((asUTC - Math.floor(d / 60000) * 60000) / 60000);
+}
+function span(min){
+  const h = Math.floor(min / 60), m = min % 60;
+  return h && m ? `${h}h ${m}m` : m ? `${m}m` : `${h}h`;
+}
+let lastDiff = null;
 (function tick(){
-  clockEl.textContent = fmt.format(new Date());
+  const now = new Date();
+  clockEl.textContent = fmt.format(now);
+  const diff = rigaOffset(now) + now.getTimezoneOffset();   // Riga minus the visitor
+  if (diff !== lastDiff){
+    lastDiff = diff;
+    clockEl.title = 'Local time in Riga · ' + (
+      diff === 0 ? 'same as yours'
+      : `${span(Math.abs(diff))} ${diff > 0 ? 'ahead of' : 'behind'} you`
+    );
+  }
   setTimeout(tick, 1000);
 })();
 
@@ -1693,13 +1862,12 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
 
   const showPlate = slug => plates.forEach(p => p.classList.toggle('is-on', p.dataset.slug === slug));
   const highlight  = slug => links.forEach(a => a.classList.toggle('is-on', slug != null && a.dataset.slug === slug));
-  const zoom = on => shots.classList.toggle('is-zoom', on);
   links.forEach(a => {
-    a.addEventListener('pointerenter', () => { showPlate(a.dataset.slug); highlight(a.dataset.slug); zoom(true); });
-    a.addEventListener('focus',        () => { if(!suppressFocus) { showPlate(a.dataset.slug); highlight(a.dataset.slug); zoom(true); } });
-    a.addEventListener('blur',         () => { highlight(null); zoom(false); });
+    a.addEventListener('pointerenter', () => { showPlate(a.dataset.slug); highlight(a.dataset.slug); });
+    a.addEventListener('focus',        () => { if(!suppressFocus) { showPlate(a.dataset.slug); highlight(a.dataset.slug); } });
+    a.addEventListener('blur',         () => { highlight(null); });
   });
-  list.addEventListener('pointerleave', () => { showPlate(REST); highlight(null); zoom(false); });
+  list.addEventListener('pointerleave', () => { showPlate(REST); highlight(null); });
   showPlate(REST);
 
   /* The case drawer returns focus to the link that opened it when it closes,
@@ -1711,7 +1879,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   window.heroPreviewRestoreFocus = el => {
     suppressFocus = true;
     el.focus();
-    showPlate(REST); highlight(null); zoom(false);
+    showPlate(REST); highlight(null);
     suppressFocus = false;
   };
 
@@ -1720,7 +1888,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
      highlight. Force everything back to rest whenever the page is (re)shown. */
   window.addEventListener('pageshow', () => {
     if(document.activeElement && list.contains(document.activeElement)) document.activeElement.blur();
-    showPlate(REST); highlight(null); zoom(false);
+    showPlate(REST); highlight(null);
   });
 })();
 
@@ -2108,7 +2276,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     return c;
   }
 
-  /* assets/Hero_background.jpg -
+  /* assets/dark-alley-with-sign-that-says-no-parking.jpg -
      the layer the cursor uncovers. Until it has loaded (or if it fails) the
      procedural schematic below stands in, so the effect is never blank. */
   let revealImg = null, portraitImg = null;
@@ -2119,7 +2287,7 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
     im.onload = () => { set(im); if(velocity) refreshReveal(); };
     im.src = src;
   }
-  loadInto('assets/Hero_background.jpg', im => revealImg = im);
+  loadInto('assets/dark-alley-with-sign-that-says-no-parking.jpg', im => revealImg = im);
   loadInto('assets/Profile_picture.png',  im => portraitImg = im);
 
   const revealTex = gl.createTexture();
@@ -2335,5 +2503,94 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   setTimeout(() => { if(hint) hint.classList.add('is-gone'); }, 9000);
 
   gl.canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); cancelAnimationFrame(raf); bail(); });
+})();
+
+/* ---------- hero title: hard inversion + chromatic hover ---------- */
+(function heroTitleThreshold(){
+  const title = document.querySelector('.hero-title');
+  if(!title) return;
+  /* same classes, so it lands in the same grid cell with the same type
+     metrics and its glyphs line up with the real ones */
+  const thresh = document.createElement('div');
+  thresh.className = 'hero-title hero-title-thresh';
+  thresh.setAttribute('aria-hidden', 'true');
+  thresh.textContent = title.textContent.trim();
+  title.before(thresh);
+
+  /* the lede gets the same threshold, no chromatic layer */
+  const lede = document.querySelector('.hero-lede');
+  if(!lede) return;
+  const ledeThresh = document.createElement('p');   /* a <p>, so it shares the lede's margins */
+  ledeThresh.className = 'hero-lede hero-lede-thresh';
+  ledeThresh.setAttribute('aria-hidden', 'true');
+  ledeThresh.textContent = lede.textContent.trim();
+  lede.before(ledeThresh);
+})();
+
+/* ---------- "Contact" (hero, about, all work): copy the address ---------- */
+(function copyEmail(){
+  /* navigator.clipboard needs a secure context; the textarea route covers
+     plain-http previews. If both fail the click falls through to mailto. */
+  const copy = async email => {
+    try{ await navigator.clipboard.writeText(email); return true; }
+    catch(_){
+      const ta = document.createElement('textarea');
+      ta.value = email;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none;';
+      document.body.append(ta);
+      ta.select();
+      let ok = false;
+      try{ ok = document.execCommand('copy'); }catch(_){}
+      ta.remove();
+      return ok;
+    }
+  };
+
+  document.querySelectorAll('.copy-email').forEach(link => {
+    const tip = link.parentElement.querySelector('.copy-tip');
+    const msg = tip.querySelector('.copy-msg');
+    let timer;
+
+    link.addEventListener('click', async e => {
+      e.preventDefault();
+      if(!(await copy(link.dataset.email))){ location.href = link.href; return; }
+      msg.textContent = 'Email copied';
+      tip.classList.add('is-on');
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        tip.classList.remove('is-on');
+        /* emptied once faded, so the next copy is announced again */
+        timer = setTimeout(() => { msg.textContent = ''; }, 200);
+      }, 1800);
+    });
+  });
+})();
+
+(function heroTitleChroma(){
+  const title = document.querySelector('.hero-title:not(.hero-title-thresh)');
+  if(!title) return;
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  if(!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+
+  /* same classes as the title for the same grid cell and metrics, but without
+     .inv — the fringe colours are literal and must stay out of the blend */
+  const ab = document.createElement('div');
+  ab.className = 'hero-title hero-title-ab';
+  ab.setAttribute('aria-hidden', 'true');
+  ab.textContent = title.textContent.trim();
+  title.after(ab);
+
+  const track = e => {
+    const r = title.getBoundingClientRect();
+    ab.style.setProperty('--cx', (e.clientX - r.left) + 'px');
+    ab.style.setProperty('--cy', (e.clientY - r.top) + 'px');
+  };
+
+  title.addEventListener('pointermove', track, { passive:true });
+  /* the mask has to be in place before the class lands, or the fringe shows up
+     wherever the cursor happened to leave it last time */
+  title.addEventListener('pointerenter', e => { track(e); ab.classList.add('is-chroma'); }, { passive:true });
+  title.addEventListener('pointerleave', () => ab.classList.remove('is-chroma'), { passive:true });
 })();
 </script>
