@@ -252,7 +252,7 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   grid-column:3;grid-row:2;align-self:center;margin-top:clamp(0px,3.5svh,38px);
   position:relative;aspect-ratio:451 / 300;   /* the artboard's slot. Note this crops
                                                 a 808x632 asset by 15% of its height */
-  background:var(--surface);overflow:hidden;
+  overflow:hidden;
 }
 /* The frame holds its place and the photograph scales inside it. The plate's
    right edge clears the work list by a couple of pixels, so growing the frame
@@ -263,11 +263,13 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
    held detailed photos instead of the flat placeholder. transform is compositor
    -only, so the slide costs nothing regardless of image detail. The zoom lives
    on a nested .hero-shot-img so its own transform (scale) doesn't fight the
-   plate's translateY, and each can keep its own duration. */
-.hero-shot{position:absolute;inset:0;overflow:hidden;
+   plate's translateY, and each can keep its own duration.
+   The incoming plate is lifted above the outgoing one, otherwise a plate later
+   in the DOM would sink on top of an earlier one rising and hide it. */
+.hero-shot{position:absolute;inset:0;overflow:hidden;z-index:1;
   transform:translateY(100%);pointer-events:none;
-  transition:transform .38s var(--ease);}
-.hero-shot.is-on{transform:translateY(0);pointer-events:auto;cursor:pointer;}
+  transition:transform .7s var(--ease-modal);}
+.hero-shot.is-on{z-index:2;transform:translateY(0);pointer-events:auto;cursor:pointer;}
 .hero-shot-img{position:absolute;inset:0;background:center/cover no-repeat;
   transform:scale(1);transition:transform .55s var(--ease);}
 /* The zoom belongs to the project names only - hovering the plate itself
@@ -860,8 +862,8 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
       <a class="inv" href="#" download>Download CV</a>
     </nav>
 
-    <!-- preview plates. Each shows assets/work/<slug>.webp once the file exists;
-         until then the surface colour shows through, no broken-image icon. -->
+    <!-- preview plates. No background on the frame: mid-transition the page
+         shows through instead of a grey box. -->
     <div class="hero-preview" id="heroPreview">
       <div class="hero-shot" data-slug="parfee" data-case="parfee"><div class="hero-shot-img" style="background-image:url('assets/Project_preview.png')"></div></div>
       <div class="hero-shot" data-slug="fiducia" data-case="fiducia"><div class="hero-shot-img" style="background-image:url('assets/Project_preview.png')"></div></div>
