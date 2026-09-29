@@ -365,6 +365,23 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
   grid-column:3 / 5;grid-row:3;align-self:end;
   font-size:var(--t-hero-meta);line-height:1.53;
 }
+/* Same hard flip as the title, minus the fringe. The lede used to be .inv-fog,
+   which over the wipe only climbs to a mid grey (|15-141| = 126). It is now
+   white in difference like the title, over a thresholded copy of itself —
+   but the threshold is dimmed to 157 instead of pure white, so at rest the
+   type still lands on the fog grey (|157-255| = 98) and only the wipe, which
+   the threshold snaps to 0, turns it white. */
+.hero-lede-thresh{
+  z-index:2;                      /* over the wipe canvas, under the text */
+  color:transparent;
+  pointer-events:none;
+  -webkit-backdrop-filter:grayscale(1) contrast(36) brightness(.616);
+  backdrop-filter:grayscale(1) contrast(36) brightness(.616);
+  -webkit-mask-image:linear-gradient(#000,#000);
+  mask-image:linear-gradient(#000,#000);
+  -webkit-mask-clip:text;
+  mask-clip:text;
+}
 
 /* ---- narrow: one column, same order ---- */
 @media (max-width:899px){
@@ -872,7 +889,7 @@ h1,h2,h3,h4,.h,.h-sm,.h-lg{letter-spacing:-0.02em;}
 
     <h1 class="hero-title inv">I design multi-role systems where the state is complex and the interface can't be.</h1>
 
-    <p class="hero-lede inv-fog">
+    <p class="hero-lede inv">
       For four years I've taken MVPs from research through UI and design system to developer
       handoff — SaaS dashboards, multi-role admin panels, mobile apps and e-commerce, for
       clients across Europe and the US. Most of that work is the operational side of a product:
@@ -2441,6 +2458,15 @@ const fmt = new Intl.DateTimeFormat('en-GB',{
   thresh.setAttribute('aria-hidden', 'true');
   thresh.textContent = title.textContent.trim();
   title.before(thresh);
+
+  /* the lede gets the same threshold, no chromatic layer */
+  const lede = document.querySelector('.hero-lede');
+  if(!lede) return;
+  const ledeThresh = document.createElement('p');   /* a <p>, so it shares the lede's margins */
+  ledeThresh.className = 'hero-lede hero-lede-thresh';
+  ledeThresh.setAttribute('aria-hidden', 'true');
+  ledeThresh.textContent = lede.textContent.trim();
+  lede.before(ledeThresh);
 })();
 
 (function heroTitleChroma(){
